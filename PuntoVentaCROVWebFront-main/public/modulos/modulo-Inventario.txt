@@ -1,0 +1,22 @@
+Módulo Inventario (Existencias y Kardex):
+Desde aquí controlas el stock físico, los costos y realizas ajustes de mercancía.
+
+1. Panel de Control:
+   - Revisa el "Resumen Financiero" para ver el valor total de tu inversión y ganancia proyectada.
+   - Usa los botones de "Excel" para descargas o cargas masivas.
+   - Utiliza el buscador para localizar productos rápidamente.
+
+2. Editar y Mover Inventario:
+   - Haz clic en el botón del "Lápiz" (✏️) sobre un producto para abrir su gestión.
+   - Datos: Puedes corregir el Nombre, Código de Barras, Stock Mínimo, Costos y Precios de Venta.
+   - Movimientos de Stock (CRÍTICO):
+     a. Ingresa la "Cantidad" a mover.
+     b. Selecciona el "Modo":
+        * Entrada (+): SUMA al inventario (ej. Compras, Devoluciones).
+        * Salida (-): RESTA del inventario (ej. Mermas, Consumo Interno).
+        * Ajuste (=): SOBRESCRIBE la cantidad exacta (ej. Inventario Físico/Corrección).
+     c. Escribe un "Comentario" obligatorio justificando el movimiento (ej. "Factura 123", "Caducado").
+   - Presiona "Guardar" para aplicar los cambios.
+
+3. Inventario Vacío:
+   - Si no tienes productos, debes ir primero al módulo "Catálogo" para darlos de alta con todos sus detalles (fotos, claves SAT, etc.) antes de poder gestionar sus existencias aquí.

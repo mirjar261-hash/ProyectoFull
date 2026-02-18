@@ -1,0 +1,6 @@
+Módulo Cambiar Contraseña:
+Este formulario permite actualizar tu clave de acceso. Sigue estos pasos en el modulo de catalogos:
+1. En el campo "Contraseña Actual", ingresa tu clave vigente para validar que eres el propietario.
+2. En "Nueva Contraseña", escribe la clave que deseas usar.
+3. En "Confirmación", vuelve a escribir la nueva clave para asegurar que no haya errores.
+4. Para finalizar, presiona el botón "Guardar cambios". Si decides no continuar, presiona "Salir".

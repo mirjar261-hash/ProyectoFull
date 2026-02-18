@@ -1,0 +1,21 @@
+Módulo Recargas Electrónicas (Teacel):
+Este apartado gestiona la venta de tiempo aire y pago de servicios.
+
+1. Nueva Recarga:
+   - Selecciona la "Compañía" telefónica (Telcel, Movistar, AT&T, etc.).
+   - Elige el "Paquete" o monto deseado de la lista disponible.
+   - Escribe el "Número Celular" del cliente y confírmalo nuevamente en el segundo campo para evitar errores.
+   - Verifica los totales (costo de la recarga + comisión si aplica).
+   - Haz clic en "Cobrar" para procesar el pago y enviar el saldo.
+
+2. Historial de Recargas:
+   - Consulta aquí el registro detallado de tus transacciones.
+   - Usa los "Filtros de Fecha" para buscar operaciones de un periodo específico.
+   - Revisa la tabla para ver el número recargado, la compañía y el monto.
+   - IMPORTANTE: Verifica la columna "Estatus". Ahí te indicará si la recarga fue "EXITOSA" o si hubo un error.
+
+3. Consulta de Saldo:
+   - Aquí puedes ver tu saldo disponible en tiempo real en la plataforma Taecel.
+   - El sistema desglosa tu saldo en "Tiempo Aire" y "Pago de Servicios".
+   - Si crees que el dato no es reciente, presiona el botón "Verificar" para actualizarlo.
+   - Si tu saldo es bajo (menos de $50) o necesitas darte de alta, usa el botón de tutorial para saber cómo abonar a tu cuenta.

@@ -1,0 +1,2 @@
+ALTER TABLE `Payment` ADD COLUMN `subscriptionId` VARCHAR(191) NULL,
+    ADD COLUMN `invoiceId` VARCHAR(191) NULL;

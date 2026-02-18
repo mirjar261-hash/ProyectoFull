@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Promocion` ADD COLUMN `activo` INTEGER NOT NULL DEFAULT 1;

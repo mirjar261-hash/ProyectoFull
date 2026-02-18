@@ -1,0 +1,23 @@
+Módulo Usuarios (Gestión de Personal):
+Desde este panel administras el acceso de tus colaboradores al sistema.
+
+1. Registrar Nuevo Usuario:
+   - Haz clic en el botón de "Nuevo Registro".
+   - Completa los "Datos Personales" (Nombre) y el "Acceso al Sistema" (Correo electrónico).
+   - Ingresa el número de "Contacto" (Celular a 10 dígitos).
+   - Define el "Rol" de autoridad (Administrador, Gerencia o Caja) y asigna una contraseña segura.
+   - Presiona "Guardar" para finalizar.
+
+2. Modificar Datos:
+   - Busca al usuario en la lista y haz clic en el botón del "Lápiz" (✏️).
+   - Podrás corregir nombres, teléfonos o cambiar su rol (el correo no suele modificarse).
+   - Haz clic en "Actualizar" para guardar los cambios.
+
+3. Configurar Permisos Avanzados (Escudo):
+   - Para un control detallado, haz clic en el icono del "Escudo" (🛡️) del usuario.
+   - Verás dos listas: A la izquierda los "Permisos Disponibles" (lo que NO tiene) y a la derecha los "Permisos Asignados" (lo que SÍ tiene).
+   - Usa las flechas centrales para mover funciones de una lista a otra y otorgar o quitar accesos específicos.
+
+4. Desactivar Usuario:
+   - Localiza al usuario que ya no labora y haz clic en el icono de "Basura" (🗑️).
+   - Confirma la acción para bloquear su acceso al sistema de inmediato.

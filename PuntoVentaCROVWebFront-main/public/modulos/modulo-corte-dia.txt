@@ -1,0 +1,6 @@
+Módulo Corte de Día (Cierre de Turno):
+Para realizar el balance final de caja y cerrar el turno, sigue estos pasos:
+1. Primero, en "Selección de Usuario", elige al usuario responsable. Es obligatorio para cargar los movimientos del turno actual.
+2. Revisa el "Resumen de Movimientos", donde el sistema te muestra el desglose calculado de ingresos (Ventas, Fondo de caja) y egresos (Gastos, Retiros).
+3. Cuenta el dinero físico real que tienes en la caja e ingrésalo en el campo "Reportar Efectivo". El sistema te indicará si tienes un sobrante (en verde) o un faltante (en rojo).
+4. Cuando todo esté cuadrado, presiona el botón "Guardar corte". Al hacerlo, se cerrará el turno, se generará tu comprobante PDF y se reiniciarán los valores para el siguiente turno.

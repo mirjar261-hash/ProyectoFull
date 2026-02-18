@@ -1,0 +1,6 @@
+**Reporte de Gastos**: Permite consultar y exportar los gastos registrados en una sucursal dentro de un rango de fechas. Al iniciar, la página carga automáticamente los gastos de la semana actual, mostrando el listado con monto, descripción, fecha y usuario que lo registró. Se puede filtrar por fecha “desde” y “hasta”, y el sistema actualiza los resultados dinámicamente.
+
+Incluye botones para exportar los datos a Excel o PDF, generando archivos con la información tabulada y el total general. El listado se presenta en una tabla ordenada cronológicamente, con diseño responsivo y resaltado al pasar el cursor. Si no hay gastos en el periodo seleccionado, se muestra un mensaje de "Sin datos".
+
+El total de gastos se muestra al final de la tabla. La interfaz utiliza componentes personalizados (Button, Input, Table) y estilos con Tailwind CSS. Las solicitudes al backend se hacen mediante Axios con token de autenticación, y se muestran notificaciones de error si algo falla al obtener los datos.
+

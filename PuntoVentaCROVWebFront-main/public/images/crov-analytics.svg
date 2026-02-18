@@ -1,0 +1,42 @@
+<svg width="960" height="640" viewBox="0 0 960 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="640" rx="36" fill="#0f172a" />
+  <rect x="60" y="64" width="840" height="512" rx="32" fill="url(#gradient)" />
+  <rect x="120" y="126" width="720" height="96" rx="24" fill="rgba(15,23,42,0.75)" stroke="rgba(255,255,255,0.1)" />
+  <rect x="150" y="162" width="240" height="24" rx="12" fill="rgba(255,255,255,0.16)" />
+  <rect x="410" y="162" width="160" height="24" rx="12" fill="rgba(255,255,255,0.08)" />
+  <g filter="url(#glow)">
+    <path d="M140 480L220 332L300 394L380 320L460 420L540 344L620 456L700 378L780 432" stroke="#fb923c" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <path d="M140 500L220 360L300 414L380 350L460 436L540 372L620 472L700 396L780 448" stroke="rgba(255,255,255,0.35)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <g>
+    <rect x="150" y="248" width="220" height="160" rx="20" fill="rgba(15,23,42,0.72)" stroke="rgba(255,255,255,0.08)" />
+    <rect x="180" y="280" width="160" height="28" rx="14" fill="#fb923c" />
+    <rect x="180" y="320" width="140" height="16" rx="8" fill="rgba(255,255,255,0.35)" />
+    <rect x="180" y="350" width="120" height="12" rx="6" fill="rgba(255,255,255,0.2)" />
+  </g>
+  <g>
+    <rect x="410" y="248" width="220" height="160" rx="20" fill="rgba(15,23,42,0.72)" stroke="rgba(255,255,255,0.08)" />
+    <rect x="440" y="280" width="160" height="28" rx="14" fill="#22d3ee" fill-opacity="0.6" />
+    <rect x="440" y="320" width="140" height="16" rx="8" fill="rgba(255,255,255,0.35)" />
+    <rect x="440" y="350" width="120" height="12" rx="6" fill="rgba(255,255,255,0.2)" />
+  </g>
+  <g>
+    <rect x="670" y="248" width="220" height="160" rx="20" fill="rgba(15,23,42,0.72)" stroke="rgba(255,255,255,0.08)" />
+    <rect x="700" y="280" width="160" height="28" rx="14" fill="#38bdf8" fill-opacity="0.6" />
+    <rect x="700" y="320" width="140" height="16" rx="8" fill="rgba(255,255,255,0.35)" />
+    <rect x="700" y="350" width="120" height="12" rx="6" fill="rgba(255,255,255,0.2)" />
+  </g>
+  <defs>
+    <linearGradient id="gradient" x1="60" y1="64" x2="760" y2="576" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1e293b" />
+      <stop offset="1" stop-color="#fb923c" stop-opacity="0.35" />
+    </linearGradient>
+    <filter id="glow" x="100" y="280" width="720" height="280" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="12" result="coloredBlur" />
+      <feMerge>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

@@ -1,0 +1,17 @@
+Módulo Retiros (Salidas de Dinero):
+Utiliza esta sección para registrar y controlar cualquier extracción de efectivo de la caja.
+
+1. Registrar Nuevo Retiro:
+   - Antes de empezar, verifica que el filtro de fechas sea correcto.
+   - Haz clic en el botón "Agregar retiro" para abrir el formulario.
+   - Escribe el "Motivo" (la razón de la salida) e ingresa la cantidad exacta en el campo "Importe".
+   - Finaliza presionando "Guardar" para registrar el movimiento.
+
+2. Modificar Retiro:
+   - Localiza el registro que deseas corregir en la lista.
+   - Haz clic en el icono del "Lápiz" (Modificar).
+   - Ajusta los datos necesarios (monto o descripción) y confirma haciendo clic en "Guardar".
+
+3. Cancelar Retiro:
+   - Si un retiro fue incorrecto, encuéntralo en la tabla.
+   - Haz clic en el icono de "Basura" para desactivar o cancelar ese movimiento definitivamente.

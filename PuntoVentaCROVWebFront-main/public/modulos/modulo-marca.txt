@@ -1,0 +1,6 @@
+Módulo Marcas (Fabricantes):
+Este catálogo permite gestionar las marcas comerciales de tus productos (ej. Nike, Samsung, Bimbo).
+
+1. Agregar Nueva: Haz clic en el botón para agregar marca. Escribe el nombre del fabricante y presiona "Registrar" para guardarlo.
+2. Modificar: Ubica la marca en la lista y haz clic en el botón del lápiz. Realiza las correcciones al nombre y pulsa "Actualizar" para confirmar.
+3. Eliminar: Si deseas desactivar una marca, presiona el botón rojo de basura correspondiente y confirma la acción cuando el sistema te lo solicite.

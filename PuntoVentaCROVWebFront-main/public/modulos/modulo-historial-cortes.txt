@@ -1,0 +1,1 @@
+**Historial de cortes**: Se encuentra en la opción Caja y muestra una lista de los cortes de caja realizados. Permite filtrar por rango de fechas, ver detalles de cada corte y eliminar registros si es necesario.

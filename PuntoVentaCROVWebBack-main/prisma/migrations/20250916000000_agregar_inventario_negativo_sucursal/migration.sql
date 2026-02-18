@@ -1,0 +1,1 @@
+ALTER TABLE `Sucursal` ADD COLUMN `inventario_negativo` BOOLEAN NOT NULL DEFAULT false;

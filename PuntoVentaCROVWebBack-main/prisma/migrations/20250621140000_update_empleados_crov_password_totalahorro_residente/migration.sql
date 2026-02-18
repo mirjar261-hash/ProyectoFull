@@ -1,0 +1,4 @@
+ALTER TABLE `empleados_CROV`
+  ADD COLUMN `password` VARCHAR(255) NULL,
+	ADD COLUMN `totalAhorro` DECIMAL(10, 3) NULL,
+  ADD COLUMN `residente` INT NOT NULL DEFAULT 0

@@ -1,0 +1,15 @@
+Módulo Proveedores (Gestión de Abastecedores):
+Aquí administras la lista de empresas y personas que te surten mercancía.
+
+1. Registrar Nuevo Proveedor:
+   - Ingresa obligatoriamente la "Razón Social" (Nombre) y el "Teléfono" de contacto a 10 dígitos.
+   - Captura el RFC para fines fiscales.
+   - En la sección "Rubro y Crédito", define el giro comercial y, si aplica, configura el límite de crédito y los días de plazo que te otorgan.
+   - Haz clic en "Registrar" para guardar.
+
+2. Modificar Datos:
+   - Usa el buscador para localizar al proveedor y haz clic en el botón del "Lápiz" (✏️).
+   - Realiza los cambios necesarios en el formulario y presiona el botón "Actualizar" para confirmar.
+
+3. Desactivar Proveedor:
+   - Encuentra al proveedor en la lista y haz clic en el icono de "Basura" (🗑️) para darlo de baja del sistema.

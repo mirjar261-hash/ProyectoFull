@@ -1,0 +1,1 @@
+ALTER TABLE `Detalle_venta` ADD COLUMN `descuentogeneral` DOUBLE NULL;

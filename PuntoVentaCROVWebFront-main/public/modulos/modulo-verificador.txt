@@ -1,0 +1,7 @@
+Módulo Verificador de Precios:
+Este módulo permite consultar rápidamente el precio y existencia de los productos.
+1. Para buscar, escanea el código de barras o escríbelo manualmente. Si no tienes el código, usa el botón "Búsqueda por Nombre", escribe el producto y haz DOBLE CLIC sobre él para seleccionarlo.
+2. La información de precio y stock aparecerá en el área de resultados.
+3. Si el cliente decide llevar el producto consultado, presiona la tecla F1 para enviarlo directamente a la venta.
+
+Nota de error: Si ves un aviso de "⛔ Sin Registros", significa que la base de datos de inventario está vacía. Es obligatorio registrar productos primero antes de usar el verificador.

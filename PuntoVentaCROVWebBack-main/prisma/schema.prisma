@@ -1,0 +1,1406 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Empresa {
+  id                Int        @id @default(autoincrement())
+  nombre            String
+  creadoEn          DateTime   @default(now())
+  fecha_vencimiento DateTime
+  activo            Int
+  token             String
+  stripeCustomerId  String?
+  sucursal          Sucursal[]
+  payments          Payment[]
+  historialPlanes   HistorialPlan[]
+}
+
+enum TipoPersona {
+  FISICA
+  MORAL
+}
+
+model Sucursal {
+  id                   Int                    @id @default(autoincrement())
+  razon_social         String?
+  rfc                  String?
+  contacto             String
+  direccion            String?
+  colonia              String
+  estado               String?
+  municipio            String?
+  cp                   String?
+  tipo_persona         TipoPersona?
+  regimen_fiscal       String?                @db.VarChar(3)
+  cer                  String?                @db.Text // certificado bucket cer
+  key                  String?                @db.Text // llave SAT bucket
+  password_cer_key     String?                @db.Text // password llave SAT
+  correo               String
+  correo_notificacion  String?
+  tel                  String
+  cel                  String
+  comision_por_recarga Decimal                @default(0) @db.Decimal(8, 2)
+  giro_comercial       String
+  nombre_comercial     String?
+  inventario_negativo  Boolean                @default(false)
+  activo               Int
+  empresaId            Int
+  empresa              Empresa                @relation(fields: [empresaId], references: [id])
+  usuarios             Usuario[]
+  clases               Clase[]
+  modelo               Modelo[]
+  marca                Marca[]
+  proveedor            Proveedor[]
+  cliente              Cliente[]
+  medicos              Medico[]
+  productos            Producto[]
+  gastos               Gasto[]
+  retiros              Retiro[]
+  inicios              Inicio[]
+  inversiones          Inversion[]
+  compras              Compra[]
+  ventas               Venta[]
+  inventario_esa       Inventario_esa[]
+  creadoEn             DateTime               @default(now())
+  actividades          Actividad[]
+  Datos_cliente_taecel Datos_cliente_taecel[]
+  cortes_dia           Corte_dia[]
+  promociones          Promocion[]
+
+  regimen CatRegimenFiscal? @relation("Sucursal_Regimen", fields: [regimen_fiscal], references: [clave])
+  Factura Factura[]
+}
+
+model Usuario {
+  id                      Int                    @id @default(autoincrement())
+  nombre                  String
+  apellidos               String
+  telefono                String
+  correo                  String
+  password                String
+  perfil                  String
+  activo                  Int
+  validado                Int                    @default(0)
+  cambio_contraseña      Int                    @default(0)
+  sucursalId              Int
+  sucursal                Sucursal               @relation(fields: [sucursalId], references: [id])
+  creadoEn                DateTime               @default(now())
+  iniciosEntregados       Inicio[]               @relation("UsuarioEntrega")
+  iniciosRecibidos        Inicio[]               @relation("UsuarioRecibe")
+  cortesDiaEntregados     Corte_dia[]            @relation("UsuarioEntregaCorte")
+  cortesDiaRecibidos      Corte_dia[]            @relation("UsuarioRecibeCorte")
+  usuarioGasto            Gasto[]                @relation("UsuarioGasto")
+  usuarioRetiro           Retiro[]               @relation("UsuarioRetiro")
+  usuarioInversion        Inversion[]            @relation("UsuarioInversion")
+  inversionCreadas        Inversion[]            @relation("UsuarioCreaInversion")
+  compras                 Compra[]               @relation("UsuarioCompra")
+  comprasDevolucion       Compra[]               @relation("UsuarioDevolucionCompra")
+  ventas                  Venta[]                @relation("UsuarioVenta")
+  ventasDevolucion        Venta[]                @relation("UsuarioVentaDevolucion")
+  detallesVentaDevolucion Detalle_venta[]        @relation("UsuarioDetalleVentaDevolucion")
+  actividades             Actividad[]            @relation("UsuarioActividad")
+  Datos_cliente_taecel    Datos_cliente_taecel[] @relation("UsuarioDatosClienteTaecel")
+  supportTickets          SupportTicket[]        @relation("UsuarioTickets")
+  ticketResponses         TicketResponse[]       @relation("UsuarioTicketRespuestas")
+  inventario_esa          Inventario_esa[]       @relation("UsuarioInventarioESA")
+  historialPermisos       HistorialPermiso[]
+  historialRecargas       Historial_recargas[]
+
+  @@unique([correo, activo])
+  @@index([sucursalId, activo, perfil])
+}
+
+model Clase {
+  id         Int        @id @default(autoincrement())
+  nombre     String     @db.VarChar(125)
+  activo     Int        @default(1)
+  sucursalId Int
+  sucursal   Sucursal   @relation(fields: [sucursalId], references: [id])
+  productos  Producto[]
+}
+
+model Modelo {
+  id         Int        @id @default(autoincrement())
+  nombre     String     @db.VarChar(125)
+  activo     Int        @default(1)
+  sucursalId Int
+  sucursal   Sucursal   @relation(fields: [sucursalId], references: [id])
+  productos  Producto[]
+}
+
+model Marca {
+  id         Int        @id @default(autoincrement())
+  nombre     String     @db.VarChar(125)
+  activo     Int        @default(1)
+  sucursalId Int
+  sucursal   Sucursal   @relation(fields: [sucursalId], references: [id])
+  productos  Producto[]
+}
+
+model Proveedor {
+  id             Int      @id @default(autoincrement())
+  rfc            String?
+  razon_social   String
+  telefono       String
+  movil          String?
+  nom_contacto   String?
+  email          String?
+  rubro          String?
+  activo         Int      @default(1)
+  limite_credito String?
+  dias_credito   String?
+  sucursalId     Int
+  sucursal       Sucursal @relation(fields: [sucursalId], references: [id])
+  compras        Compra[]
+
+  @@index([sucursalId, activo])
+}
+
+model Cliente {
+  id                       Int          @id @default(autoincrement())
+  razon_social             String
+  telefono                 String
+  movil                    String? // opcional
+  nom_contacto             String?
+  email                    String?
+  limite_credito           Int?
+  dias_credito             Int?
+  tipo_precio              Int?
+  razon_social_facturacion String?
+  rfc_facturacion          String?
+  curp_facturacion         String?
+  domicilio_facturacion    String?
+  no_ext_facturacion       String?
+  no_int_facturacion       String?
+  cp_facturacion           String?
+  colonia_facturacion      String?
+  ciudad_facturacion       String?
+  localidad_facturacion    String?
+  estado_facturacion       String?
+  pais_facturacion         String?
+  regimen_fiscal           String?      @db.VarChar(3)
+  tipo_persona             TipoPersona?
+
+  sucursalId Int
+  sucursal   Sucursal          @relation(fields: [sucursalId], references: [id])
+  activo     Int               @default(1)
+  ventas     Venta[]
+  regimen    CatRegimenFiscal? @relation("Cliente_Regimen", fields: [regimen_fiscal], references: [clave])
+
+  @@index([sucursalId, activo])
+  @@index([regimen_fiscal])
+}
+
+enum TipoSistemaCROV {
+  PUNTO_DE_VENTA_CROV
+  CROV_RESTAURANTE
+  CROV_HOTEL
+  CROV_SPA
+  CROV_INMOBILIARIA
+}
+
+enum PuestoEmpleadoCROV {
+  SCRUM_MASTER
+  TESTER
+  DESARROLLADOR
+  VENTAS
+  SLA
+}
+
+enum PrioridadTareaCROV {
+  BAJA
+  MEDIA
+  ALTA
+}
+
+enum EstatusTareaCROV {
+  POR_HACER
+  EN_CURSO
+  IMPLEMENTACION_LISTA
+  PRUEBAS
+  LISTO
+}
+
+enum TipoTareaCROV {
+  TAREA
+  ERROR
+  SOPORTE
+  HISTORIA
+}
+
+enum GarantiaTicketCROV {
+  SI
+  NO
+}
+
+enum TipoProblemaTicketCROV {
+  DUDA
+  FALLA_SISTEMA
+  MANTENIMIENTO
+  ERROR_CLIENTE
+  ASISTENCIA_CON_EL_SISTEMA
+  INSTALACION_DE_DEMO
+  CAMBIO
+}
+
+enum PrioridadTicketSoporteCROV {
+  BAJA
+  MEDIA
+  URGENTE
+}
+
+enum EstadoSolicitudTicketCROV {
+  RECIBIDO
+  EN_PROCESO
+  RESUELTO
+  PENDIENTE
+  SIN_SOPORTE
+  CLIENTE_NO_RESPONDE
+}
+
+enum InteresProspectoCROV {
+  PUNTO_DE_VENTA_CROV
+  CROV_RESTAURANTE
+  PUNTO_DE_VENTA_WEB
+}
+
+model SistemasCROV {
+  id              Int      @id @default(autoincrement())
+  nombre          String
+  activo          Int      @default(1)
+  fecha_registro  DateTime @default(now())
+  tareas          TareaCROV[]
+  residentes     Empleados_CROV[]
+  @@map("sistemas_crov")
+}
+
+model Clientes_CROV {
+  id                Int             @id @default(autoincrement())
+  nombre_cliente    String
+  nombre_negocio    String
+  direccion         String?
+  telefono          String?
+  telefono_negocio  String?
+  logo              String?
+  correo            String?
+  latitud           Decimal?        @db.Decimal(9, 6)
+  longitud          Decimal?        @db.Decimal(9, 6)
+  tipo_sistema      TipoSistemaCROV
+  fecha_instalacion DateTime?
+  fecha_fin_soporte DateTime?
+  id_giro_comercial Int?
+
+  tickets_soporte TicketSoporteCROV[]        @relation("ClienteCrovTickets")
+  prospectos      Prospectos_CROV[]
+  mantenimientos  MantenimientoClienteCROV[]
+  giroComercial   GiroComercial?             @relation(fields: [id_giro_comercial], references: [id])
+
+  @@index([id_giro_comercial])
+  @@map("clientes_CROV")
+}
+
+model GiroComercial {
+  id       Int             @id @default(autoincrement())
+  nombre   String
+  activo   Int             @default(1)
+  clientes Clientes_CROV[]
+
+  @@map("giro_comercial")
+}
+
+model Empleados_CROV {
+  id               Int                 @id @default(autoincrement())
+  nombre_completo  String
+  fecha_nacimiento DateTime?            @db.Date
+  celular          String
+  correo           String
+
+  password         String?              @db.VarChar(255)
+  puesto           PuestoEmpleadoCROV
+  activo           Int                 @default(1)
+  totalAhorro      Decimal?          @db.Decimal(10, 3)
+  residente        Int                 @default(0)
+  monto_ahorro     Decimal @default(0) @db.Decimal(8, 3)
+  id_sistema_residencia Int?
+  color_perfil     String?  @db.VarChar(7)  
+  dias_vacaciones       Int       @default(0)
+  
+  tickets_soporte  TicketSoporteCROV[] @relation("EmpleadoCrovTickets")
+  tareas           TareaCROV[]
+  permisos_internal HistorialPermisoInternal[]
+  ahorros          Ahorros_Empleados_CROV[]
+  sistema_residencia    SistemasCROV? @relation(fields: [id_sistema_residencia], references: [id])
+  solicitudes_incidencia SolicitudesIncidenciaCROV[]
+  @@map("empleados_CROV")
+}
+
+model Ahorros_Empleados_CROV {
+  id          Int      @id @default(autoincrement())
+  monto       Decimal  @db.Decimal(8, 3)
+  fecha       DateTime @db.Date 
+  id_empleado Int
+  retiro      Boolean  @default(false)
+  
+  empleado    Empleados_CROV @relation(fields: [id_empleado], references: [id])
+
+  @@map("ahorros_empleados_crov")
+}
+
+model TicketSoporteCROV {
+  id                   Int                        @id @default(autoincrement())
+  fecha_registro       DateTime                   @default(now())
+  folio                String
+  correo               String?
+  nombre_cliente       String
+  nombre_negocio       String
+  telefono             String?
+  garantia             GarantiaTicketCROV
+  descripcion          String?
+  tipo_problema        TipoProblemaTicketCROV
+  prioridad            PrioridadTicketSoporteCROV @default(MEDIA)
+  descripcion_solucion String?
+  id_empleado_crov     Int?
+  id_cliente           Int?
+  fecha_solucion       DateTime?
+  estado_solicitud     EstadoSolicitudTicketCROV  @default(RECIBIDO)
+  tiempo_atencion      String?
+
+  empleado Empleados_CROV? @relation("EmpleadoCrovTickets", fields: [id_empleado_crov], references: [id])
+  cliente  Clientes_CROV?  @relation("ClienteCrovTickets", fields: [id_cliente], references: [id])
+
+  @@map("ticket_soporte_crov")
+}
+
+model Prospectos_CROV {
+  id                  Int                  @id @default(autoincrement())
+  nombre              String
+  telefono            String
+  correo              String?
+  interes             InteresProspectoCROV
+  id_cliente_crov     Int?
+  nombre_negocio      String?
+  direccion_negocio   String?
+  activo              Int                  @default(1)
+  fecha_creacion      DateTime             @default(now())
+  ultima_notificacion DateTime?
+
+  cliente Clientes_CROV? @relation(fields: [id_cliente_crov], references: [id])
+
+  @@index([id_cliente_crov])
+  @@map("prospectos_crov")
+}
+
+model MantenimientoClienteCROV {
+  id                          Int      @id @default(autoincrement())
+  id_cliente_crov             Int
+  fecha_mantenimiento         DateTime @db.Date
+  fecha_proximo_mantenimiento DateTime @db.Date
+  comentarios                 String?
+  activo                      Int      @default(1)
+
+  cliente Clientes_CROV @relation(fields: [id_cliente_crov], references: [id])
+
+  @@index([id_cliente_crov])
+  @@map("mantenimientos_clientes_crov")
+}
+
+model SprintCROV {
+  id            Int         @id @default(autoincrement())
+  nombre        String      @default("Sprint_")
+  fecha_inicio  DateTime?   @db.Date
+  fecha_final   DateTime?   @db.Date
+  activo        Int         @default(1)
+  en_uso        Int         @default(0)
+  tareas        TareaCROV[]
+
+  @@map("sprint_crov")
+}
+
+model TareaCROV {
+  id                 Int               @id @default(autoincrement())
+  titulo             String            @db.Text
+  descripcion        String?           @db.Text
+  id_sistemas_crov   Int
+  id_empleados_crov  Int
+  prioridad          PrioridadTareaCROV @default(BAJA)
+  estatus            EstatusTareaCROV   @default(POR_HACER)
+  reabierto          Int               @default(0)
+  activo             Int               @default(1)
+  fecha_registro     DateTime          @default(now())
+  fecha_vencimiento  DateTime?
+  tipo               TipoTareaCROV     @default(TAREA)
+  complejidad        Int               @default(1)
+  id_sprint          Int?
+
+  sistema   SistemasCROV   @relation(fields: [id_sistemas_crov], references: [id])
+  empleado  Empleados_CROV @relation(fields: [id_empleados_crov], references: [id])
+  sprint    SprintCROV?    @relation(fields: [id_sprint], references: [id])
+
+  @@index([id_sistemas_crov])
+  @@index([id_empleados_crov])
+  @@index([id_sprint])
+  @@index([prioridad])
+  @@index([estatus])
+  @@index([activo])
+  @@map("tarea_crov")
+}
+
+model Producto {
+  id                  BigInt           @id @default(autoincrement())
+  cod_barras          String?          @db.VarChar(50)
+  codigo              String           @db.VarChar(50)
+  cod_del_fabricante  String?          @db.VarChar(30)
+  nombre              String           @db.VarChar(125)
+  costo               Decimal          @db.Decimal(10, 3)
+  stock_min           Int?
+  imagen              String?          @db.Text
+  idclase             Int?
+  idmarca             Int?
+  idmodelo            Int?
+  activo              Int              @default(1)
+  servicio            Int?
+  utilidad1           Float
+  utilidad2           Float
+  utilidad3           Float
+  utilidad4           Float
+  precio1             Decimal          @db.Decimal(10, 3)
+  precio2             Decimal          @db.Decimal(10, 3)
+  precio3             Decimal          @db.Decimal(10, 3)
+  precio4             Decimal          @db.Decimal(10, 3)
+  bascula             Int?
+  cantidad_existencia Float
+  cantidad_inicial    Float
+  impuesto            String?
+  insumo              Float?
+  tipo_medicamento    TipoMedicamento?
+  unidad_medida       String?          @db.VarChar(20)
+  clave_prodserv      String?          @db.VarChar(10) // -> CatClaveProdServ.clave
+  clave_unidad_medida String?          @db.VarChar(3) // -> CatClaveUnidad.clave
+
+  tipo_ieps     String? @db.VarChar(45)
+  cantidad_ieps Float?
+  sucursalId    Int
+
+  clase    Clase?           @relation(fields: [idclase], references: [id])
+  marca    Marca?           @relation(fields: [idmarca], references: [id])
+  modelo   Modelo?          @relation(fields: [idmodelo], references: [id])
+  sucursal Sucursal         @relation(fields: [sucursalId], references: [id])
+  insumos  ProductoInsumo[] @relation("ProductoToInsumos")
+  usadosEn ProductoInsumo[] @relation("ProductoEsInsumo")
+
+  unidad   CatClaveUnidad?   @relation("Producto_Unidad", fields: [clave_unidad_medida], references: [clave])
+  prodServ CatClaveProdServ? @relation("Producto_ProdServ", fields: [clave_prodserv], references: [clave])
+
+  detalles_compra Detalle_compra[]
+  detalles_venta  Detalle_venta[]
+  inventario_esa  Inventario_esa[]
+  promociones     Promocion[]
+
+  @@index([sucursalId, activo])
+  @@index([cod_barras, sucursalId, activo])
+  @@index([codigo, sucursalId, activo])
+}
+
+model ProductoInsumo {
+  id               BigInt @id @default(autoincrement())
+  productoId       BigInt
+  productoIdInsumo BigInt
+  cantidad         Float
+
+  producto       Producto @relation("ProductoToInsumos", fields: [productoId], references: [id])
+  productoInsumo Producto @relation("ProductoEsInsumo", fields: [productoIdInsumo], references: [id])
+
+  @@unique([productoId, productoIdInsumo], name: "ProductoInsumo_producto_productoInsumo_key")
+  @@index([productoId])
+  @@index([productoIdInsumo])
+}
+
+model Gasto {
+  id          Int      @id @default(autoincrement())
+  id_usuario  Int
+  monto       Float
+  descripcion String?  @db.VarChar(200)
+  fecha       DateTime
+  sucursalId  Int
+  activo      Int      @default(1)
+
+  sucursal     Sucursal @relation(fields: [sucursalId], references: [id])
+  usuarioGasto Usuario  @relation("UsuarioGasto", fields: [id_usuario], references: [id])
+
+  @@index([sucursalId, activo])
+  @@index([sucursalId, fecha])
+}
+
+model Retiro {
+  id          Int      @id @default(autoincrement())
+  id_usuario  Int
+  monto       Float
+  descripcion String?  @db.VarChar(200)
+  fecha       DateTime
+  sucursalId  Int
+  activo      Int      @default(1)
+
+  sucursal      Sucursal @relation(fields: [sucursalId], references: [id])
+  usuarioRetiro Usuario  @relation("UsuarioRetiro", fields: [id_usuario], references: [id])
+
+  @@index([sucursalId, activo, fecha])
+}
+
+model Inicio {
+  id               Int      @id @default(autoincrement())
+  idusuarioentrega Int
+  idusuariorecibe  Int
+  monto            Decimal  @db.Decimal(8, 2)
+  activo           Int      @default(1)
+  comentarios      String?  @db.VarChar(200)
+  fecha            DateTime
+  sucursalId       Int
+
+  sucursal       Sucursal @relation(fields: [sucursalId], references: [id])
+  usuarioentrega Usuario  @relation("UsuarioEntrega", fields: [idusuarioentrega], references: [id])
+  usuariorecibe  Usuario  @relation("UsuarioRecibe", fields: [idusuariorecibe], references: [id])
+
+  @@index([sucursalId, activo])
+  @@index([sucursalId, fecha])
+}
+
+model Corte_dia {
+  id                 Int      @id @default(autoincrement())
+  id_usuario_entrega Int
+  id_usuario_recibe  Int
+  monto_reportado    Float
+  monto_esperado     Float
+  activo             Int      @default(1)
+  comentarios        String?  @db.VarChar(200)
+  fecha              DateTime
+  sucursalId         Int
+
+  sucursal       Sucursal            @relation(fields: [sucursalId], references: [id])
+  usuarioEntrega Usuario             @relation("UsuarioEntregaCorte", fields: [id_usuario_entrega], references: [id])
+  usuarioRecibe  Usuario             @relation("UsuarioRecibeCorte", fields: [id_usuario_recibe], references: [id])
+  detalles       Corte_dia_detalle[]
+
+  @@index([sucursalId, activo])
+  @@index([sucursalId, fecha])
+}
+
+model Corte_dia_detalle {
+  id          Int      @id @default(autoincrement())
+  id_corte    Int
+  tipo        String   @db.VarChar(200)
+  monto       Float
+  comentarios String?  @db.VarChar(500)
+  fecha       DateTime
+  activo      Int      @default(1)
+
+  corte Corte_dia @relation(fields: [id_corte], references: [id])
+}
+
+model Inversion {
+  id                  Int      @id @default(autoincrement())
+  id_usuario          Int
+  monto               Float
+  descripcion         String?  @db.VarChar(200)
+  fecha               DateTime
+  activo              Int      @default(1)
+  id_usuario_creacion Int
+  sucursalId          Int
+
+  sucursal         Sucursal @relation(fields: [sucursalId], references: [id])
+  usuarioInversion Usuario  @relation("UsuarioInversion", fields: [id_usuario], references: [id])
+  usuarioCreacion  Usuario  @relation("UsuarioCreaInversion", fields: [id_usuario_creacion], references: [id])
+
+  @@index([sucursalId, activo])
+  @@index([sucursalId, fecha])
+}
+
+enum EstadoCompra {
+  CONTADO
+  CREDITO
+  TARJETA
+}
+
+model Compra {
+  id                    Int          @id @default(autoincrement())
+  numdoc                String       @db.VarChar(20)
+  id_proveedor          Int?
+  id_usuario            Int
+  estado                EstadoCompra
+  numitems              Int
+  observaciones         String?
+  subtotal              Float
+  iva                   Float
+  total                 Float
+  fecha                 DateTime
+  activo                Int
+  saldo_pendiente       Float
+  fecha_devolucion      DateTime?
+  id_usuario_devolucion Int?
+  fecha_vencimiento     DateTime?
+  cuenta_empresa        String?      @db.VarChar(50)
+  impuestos             Float
+  ieps                  Float
+  sucursalId            Int
+
+  proveedor         Proveedor?       @relation(fields: [id_proveedor], references: [id])
+  usuarioCompra     Usuario          @relation("UsuarioCompra", fields: [id_usuario], references: [id])
+  usuarioDevolucion Usuario?         @relation("UsuarioDevolucionCompra", fields: [id_usuario_devolucion], references: [id])
+  sucursal          Sucursal         @relation(fields: [sucursalId], references: [id])
+  detalles          Detalle_compra[]
+
+  @@index([sucursalId, activo])
+  @@index([sucursalId, fecha])
+}
+
+model Detalle_compra {
+  id                 Int    @id @default(autoincrement())
+  id_compra          Int
+  id_producto        BigInt
+  cantidad           Float
+  importe            Float
+  descuento          Float
+  activo             Int
+  cantidad_existente Float
+  iva                Float
+  ieps               Float
+
+  compra   Compra   @relation(fields: [id_compra], references: [id])
+  producto Producto @relation(fields: [id_producto], references: [id])
+
+  @@index([id_compra])
+}
+
+model Payment {
+  id              Int      @id @default(autoincrement())
+  paymentIntentId String
+  customerId      String?
+  status          String
+  amount          Int
+  currency        String
+  created         DateTime
+  paymentMethod   String?
+  description     String?
+  orderId         Int?
+  empresaId       Int?
+  cardLast4       String?
+  cardBrand       String?
+  cardCountry     String?
+  subscriptionId  String?
+  invoiceId       String?
+  empresa         Empresa? @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId])
+}
+
+model HistorialPlan {
+  id          Int      @id @default(autoincrement())
+  empresaId   Int
+  token_plan  String
+  creadoEn    DateTime @default(now())
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, creadoEn])
+}
+
+model Actividad {
+  id               Int      @id @default(autoincrement())
+  sucursalId       Int
+  titulo           String
+  descripcion      String?
+  usuario_id       Int
+  fecha_calendario DateTime
+  horario          String?
+  fecha_registro   DateTime @default(now())
+  activo           Int      @default(1)
+
+  sucursal         Sucursal @relation(fields: [sucursalId], references: [id])
+  usuarioActividad Usuario  @relation("UsuarioActividad", fields: [usuario_id], references: [id])
+
+  @@index([sucursalId, activo])
+  @@index([sucursalId, fecha_calendario])
+}
+
+model Datos_cliente_taecel {
+  id                  Int       @id @default(autoincrement())
+  cuentaID            String?
+  usuarioID           String?
+  perfilID            String?
+  contactoID          String?
+  status              String?
+  referenciaPagos     String?
+  referenciaServicios String?
+  numeroCuenta        String?
+  usuarioTaecel       String?   @map("usuario")
+  keyTaecel           String?
+  nipTaecel           String?
+  nombreCompleto      String?
+  UID                 String?
+  password            String?
+  phone               String?
+  email               String?
+  envioEmail          String?
+  fecha               DateTime?
+  activo              Int?
+  sucursal_id         Int?
+  usuario_id          Int?
+
+  sucursal Sucursal? @relation(fields: [sucursal_id], references: [id])
+  usuario  Usuario?  @relation("UsuarioDatosClienteTaecel", fields: [usuario_id], references: [id])
+
+  @@index([sucursal_id, activo])
+}
+
+model Venta {
+  id                    Int       @id @default(autoincrement())
+  id_cliente            Int?
+  id_usuario            Int
+  numitems              Int
+  numdoc                String
+  estado                String //CONTADO, CREDITO
+  observaciones         String?
+  receta                String?
+  subtotal              Float
+  iva                   Float
+  total                 Float
+  saldo_pendiente       Float?
+  totalAbonado          Float      @default(0)
+  descuento             Float?
+  descuentoind          Float?
+  tipo_descuento        String?
+  ahorro                Float?
+  efectivo              Float?
+  tarjeta               Float?
+  vale                  Float?
+  cheque                Float?
+  transferencia         Float?
+  referencia            String?
+  tarjeta_tipo          String?
+  fecha_devolucion      DateTime?
+  id_usuario_devolucion Int?
+  medico_id             BigInt?
+  fecha                 DateTime
+  activo                Int       @default(1)
+  sucursalId            Int
+
+  cliente           Cliente?        @relation(fields: [id_cliente], references: [id])
+  usuario           Usuario         @relation("UsuarioVenta", fields: [id_usuario], references: [id])
+  usuarioDevolucion Usuario?        @relation("UsuarioVentaDevolucion", fields: [id_usuario_devolucion], references: [id])
+  medico            Medico?         @relation(fields: [medico_id], references: [id])
+  sucursal          Sucursal        @relation(fields: [sucursalId], references: [id])
+  detalles          Detalle_venta[]
+  Factura           Factura?
+
+  @@index([sucursalId, activo])
+  @@index([sucursalId, fecha])
+}
+
+enum CxcMetodoPago {
+  EFECTIVO
+  TARJETA
+}
+
+enum CxcTarjetaTipo {
+  CREDITO
+  DEBITO
+}
+
+model Cxc_cliente {
+  id               Int             @id @default(autoincrement())
+  saldo_pendiente  Float
+  saldo_abonado    Float           @default(0)
+  idusuariorecibe  Int
+  comentarios      String?
+  activo           Int             @default(1)
+  idcliente        Int
+  fecha            DateTime        @default(now()) @db.DateTime(3)
+  idventa          Int?
+  metodo_pago      CxcMetodoPago?
+  referencia       String?         @db.VarChar(45)
+  tarjeta_tipo     CxcTarjetaTipo?
+  idsucursal       Int
+  abono_devuelto   Int             @default(0)
+  fecha_devolucion DateTime?       @db.DateTime(3)
+
+  @@index([idsucursal, activo], map: "Cxc_cliente_idsucursal_activo_idx")
+  @@index([idcliente], map: "Cxc_cliente_idcliente_idx")
+  @@index([idventa], map: "Cxc_cliente_idventa_idx")
+  @@map("cxc_clientes")
+}
+
+enum EstadoFactura {
+  PENDIENTE
+  TIMBRADA
+  CANCELADA
+  ERROR
+}
+
+model Factura {
+  id Int @id @default(autoincrement())
+
+  ventaId         Int      @unique
+  venta           Venta    @relation(fields: [ventaId], references: [id])
+  sucursalId      Int
+  sucursal        Sucursal @relation(fields: [sucursalId], references: [id])
+  rfcEmisor       String?
+  nombreEmisor    String?
+  regimenEmisor   String?  @db.VarChar(3)
+  rfcReceptor     String?
+  nombreReceptor  String?
+  regimenReceptor String?  @db.VarChar(3)
+  //Datos del comprobante
+  version         String   @default("4.0")
+  tipoComprobante String   @db.VarChar(1) // I,E,P,N
+  serie           String?  @db.VarChar(25)
+  folio           String?  @db.VarChar(40)
+  fechaEmision    DateTime
+  moneda          String   @db.VarChar(3)
+  tipoCambio      Decimal? @db.Decimal(18, 6)
+  exportacion     String?  @db.VarChar(2)
+  lugarExpedicion String?  @db.VarChar(5) // CP
+
+  subtotal         Float
+  descuento        Float?    @default(0)
+  impuestosTras    Float?    @default(0) // trasladados
+  impuestosRet     Float?    @default(0) // retenidos
+  total            Float
+  // Timbre Fiscal Digital (TFD)
+  uuid             String?   @unique
+  fechaTimbrado    DateTime?
+  noCertificadoSAT String?   @db.VarChar(20)
+  rfcProvCertif    String?   @db.VarChar(20)
+  selloSAT         String?   @db.Text
+  // CFD del emisor
+  noCertificado    String?   @db.VarChar(20)
+  selloCFD         String?   @db.Text
+
+  xmlUrl   String? @db.Text
+  pdfUrl   String? @db.Text
+  acuseUrl String? @db.Text // acuse de cancelación
+
+  estado        EstadoFactura @default(PENDIENTE)
+  creadoEn      DateTime      @default(now())
+  actualizadoEn DateTime      @updatedAt
+
+  formaPago    String?       @db.VarChar(2)
+  formaPagoCat CatFormaPago? @relation("Factura_FormaPago", fields: [formaPago], references: [clave])
+
+  metodoPago    String?        @db.VarChar(3) // "PUE" | "PPD"
+  metodoPagoCat CatMetodoPago? @relation("Factura_MetodoPago", fields: [metodoPago], references: [clave])
+
+  catMetodoPagoId Int?
+  usoCFDI         String?     @db.VarChar(3)
+  usoCFDICat      CatUsoCFDI? @relation("Factura_UsoCFDI", fields: [usoCFDI], references: [clave])
+
+  @@index([sucursalId, fechaEmision])
+  @@index([estado])
+}
+
+enum RequerimientoCampo {
+  NO
+  OPCIONAL
+  OBLIGATORIO
+}
+
+model CatFormaPago {
+  id          Int    @id @default(autoincrement())
+  clave       String @unique @map("c_FormaPago") @db.VarChar(2)
+  descripcion String
+
+  bancarizado           Boolean
+  reqNumeroOperacion    RequerimientoCampo @default(NO)
+  reqRfcEmisorCtaOrd    RequerimientoCampo @default(NO)
+  reqCuentaOrdenante    RequerimientoCampo @default(NO)
+  patronCuentaOrdenante String?            @db.VarChar(100)
+  reqCuentaBeneficiaria String?            @db.VarChar(20)
+  patronCuentaBen       String?            @db.VarChar(100)
+  reqTipoCadenaPago     String?            @db.VarChar(20)
+
+  reqNombreBancoExtranj RequerimientoCampo @default(NO)
+  condicionBancoExtranj String?            @db.VarChar(200)
+
+  fecha_inicio_vigencia DateTime?
+  fecha_fin_vigencia    DateTime?
+
+  activo Int @default(1)
+
+  facturas Factura[] @relation("Factura_FormaPago")
+}
+
+/// Catálogo SAT: c_MetodoPago (PUÉ / PPD)
+model CatMetodoPago {
+  id                    Int       @id @default(autoincrement())
+  clave                 String    @unique @map("c_MetodoPago") @db.VarChar(3) // PUE | PPD
+  descripcion           String
+  fecha_inicio_vigencia DateTime?
+  fecha_fin_vigencia    DateTime?
+  activo                Int       @default(1)
+
+  facturas Factura[] @relation("Factura_MetodoPago")
+
+  @@index([clave])
+  @@index([descripcion])
+}
+
+/// Catálogo SAT: c_UsoCFDI
+model CatUsoCFDI {
+  id                    Int       @id @default(autoincrement())
+  clave                 String    @unique @map("c_UsoCFDI") @db.VarChar(3)
+  descripcion           String
+  aplica_fisica         Boolean
+  aplica_moral          Boolean
+  fecha_inicio_vigencia DateTime?
+  fecha_fin_vigencia    DateTime?
+  activo                Int       @default(1)
+
+  regimenes CatUsoCFDIRegimen[]
+
+  facturas Factura[] @relation("Factura_UsoCFDI")
+
+  @@index([clave])
+  @@index([descripcion])
+}
+
+model CatUsoCFDIRegimen {
+  uso_clave     String @db.VarChar(3)
+  regimen_clave String @db.VarChar(3)
+  activo        Int    @default(1)
+
+  uso     CatUsoCFDI       @relation(fields: [uso_clave], references: [clave], onDelete: Cascade, onUpdate: Cascade)
+  regimen CatRegimenFiscal @relation(fields: [regimen_clave], references: [clave], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([uso_clave, regimen_clave])
+  @@index([regimen_clave])
+}
+
+model Detalle_venta {
+  id                    Int       @id @default(autoincrement())
+  id_venta              Int
+  id_producto           BigInt
+  cantidad              Float
+  precio                Float
+  total                 Float
+  descuento             Float?
+  descuentoind          Float?
+  descuentogeneral      Float?
+  costo                 Float?    @default(0)
+  activo                Int       @default(1)
+  fecha_devolucion      DateTime?
+  id_usuario_devolucion Int?
+
+  venta             Venta                     @relation(fields: [id_venta], references: [id])
+  producto          Producto                  @relation(fields: [id_producto], references: [id])
+  usuarioDevolucion Usuario?                  @relation("UsuarioDetalleVentaDevolucion", fields: [id_usuario_devolucion], references: [id])
+  promociones       Detalle_venta_promocion[]
+
+  @@index([id_venta, activo])
+}
+
+enum TarjetaTipo {
+  CREDITO
+  DEBITO
+}
+
+model Operador_movil {
+  id     Int                  @id @default(autoincrement())
+  nombre String
+  activo Int
+  skus   Operador_movil_sku[]
+}
+
+model Operador_movil_sku {
+  id                Int                  @id @default(autoincrement())
+  id_operador_movil Int
+  codigo            String
+  activo            Int
+  descripcion       String
+  vigencia          Int
+  comments          String?              @db.VarChar(500)
+  operador_movil    Operador_movil       @relation(fields: [id_operador_movil], references: [id])
+  historial         Historial_recargas[]
+}
+
+model Historial_recargas {
+  id                       Int                @id @default(autoincrement())
+  id_usuario               Int
+  id_gv_operador_movil_sku Int
+  numero_telefonico        String
+  transID_taecel           String?
+  fecha_taecel             String?
+  folio_taecel             String?
+  status_taecel            String?
+  success_taecel           Int?
+  monto_pagado             Float
+  subtotal                 Float
+  igv                      Float
+  total                    Float
+  efectivo                 Float?
+  tarjeta                  Float?
+  vale                     Float?
+  cheque                   Float?
+  transferencia            Float?
+  referencia               String?            @db.VarChar(45)
+  tarjeta_tipo             TarjetaTipo?
+  id_cuenta_empresa        Int?
+  descripcion              String?
+  fecha                    DateTime
+  activo                   Int                @default(1)
+  usuario                  Usuario            @relation(fields: [id_usuario], references: [id])
+  operadorSku              Operador_movil_sku @relation(fields: [id_gv_operador_movil_sku], references: [id])
+}
+
+//Spin Neogocios
+enum TipoArchivo {
+  FOTOS_INTERIOR
+  FOTOS_EXTERIOR
+  OTRO
+}
+
+model SolicitudSpinNegocios {
+  id                   Int            @id @default(autoincrement())
+  ineFrente            String?        @db.Text
+  ineReverso           String?        @db.Text
+  comprobanteDomicilio String?        @db.Text
+  constanciaFiscal     String?        @db.Text
+  archivos             ArchivoFotos[] // relación 1:N
+  estadocuenta         String?        @db.Text
+
+  correoElectronico String?
+  linkRedSocial     String?
+  nombreCompleto    String?
+  telefono          String?
+  numeroTerminales  String?
+  activo            Int     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ArchivoFotos {
+  id          Int                   @id @default(autoincrement())
+  tipo        TipoArchivo
+  url         String                @db.Text
+  solicitudId Int
+  solicitud   SolicitudSpinNegocios @relation(fields: [solicitudId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+//tickets
+enum EstadoTicket {
+  ABIERTO
+  EN_PROGRESO
+  CERRADO
+}
+
+enum PrioridadTicket {
+  BAJA
+  MEDIA
+  ALTA
+}
+
+model SupportTicket {
+  id              Int             @id @default(autoincrement())
+  user_id         Int
+  asunto          String
+  mensaje_inicial String
+  estado          EstadoTicket    @default(ABIERTO)
+  prioridad       PrioridadTicket @default(MEDIA)
+  fecha_creacion  DateTime        @default(now())
+  fecha_cierre    DateTime?
+
+  user       Usuario          @relation("UsuarioTickets", fields: [user_id], references: [id])
+  respuestas TicketResponse[] @relation("TicketRespuestas")
+}
+
+model TicketResponse {
+  id              Int      @id @default(autoincrement())
+  ticket_id       Int
+  user_id         Int
+  mensaje         String
+  es_admin        Boolean  @default(false)
+  fecha_respuesta DateTime @default(now())
+
+  ticket  SupportTicket @relation("TicketRespuestas", fields: [ticket_id], references: [id])
+  usuario Usuario       @relation("UsuarioTicketRespuestas", fields: [user_id], references: [id])
+}
+
+//Permisos
+model Permiso {
+  id            Int                @id @default(autoincrement())
+  nombre        String
+  administrador Int                @default(0)
+  gerencia      Int                @default(0)
+  caja          Int                @default(0)
+  usuarios      HistorialPermiso[]
+}
+
+model HistorialPermiso {
+  id        Int     @id @default(autoincrement())
+  usuarioId Int
+  permisoId Int
+  permitido Boolean @default(true)
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  permiso   Permiso @relation(fields: [permisoId], references: [id])
+
+  @@unique([usuarioId, permisoId])
+}
+
+model PermisoInternal {
+  id            Int                       @id @default(autoincrement())
+  nombre        String
+  scrum_master  Int                       @default(0)
+  tester        Int                       @default(0)
+  desarrollador Int                       @default(0)
+  ventas        Int                       @default(0)
+  sla           Int                       @default(0)
+  empleados     HistorialPermisoInternal[]
+
+  @@map("permisosinternal")
+}
+
+model HistorialPermisoInternal {
+  id         Int            @id @default(autoincrement())
+  empleadoId Int
+  permisoId  Int
+  permitido  Boolean        @default(true)
+  empleado   Empleados_CROV @relation(fields: [empleadoId], references: [id])
+  permiso    PermisoInternal @relation(fields: [permisoId], references: [id])
+
+  @@map("historial_permisosinternal")
+  @@unique([empleadoId, permisoId])
+}
+
+enum TipoESA {
+  VENTA
+  DEVOLUCION_VENTA
+  COMPRA
+  DEVOLUCION_COMPRA
+  ENTRADA
+  SALIDA
+  AJUSTE
+}
+
+model Inventario_esa {
+  id               BigInt   @id @default(autoincrement())
+  id_producto      BigInt
+  comentario       String?  @db.VarChar(150)
+  tipo_esa         TipoESA
+  cantidad         Float
+  cantidad_antigua Float
+  fecha            DateTime
+  id_user          Int
+  costo            Float
+  sucursalId       Int
+
+  producto Producto @relation(fields: [id_producto], references: [id])
+  usuario  Usuario  @relation("UsuarioInventarioESA", fields: [id_user], references: [id])
+  sucursal Sucursal @relation(fields: [sucursalId], references: [id])
+
+  @@index([sucursalId, id_producto, fecha])
+}
+
+model Plantilla {
+  id            Int      @id @default(autoincrement())
+  titulo        String   @db.VarChar(191)
+  mensaje       String   @db.Text
+  activo        Int      @default(1)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+enum TipoPromocion {
+  POR_PRODUCTO
+  POR_CANTIDAD
+  AL_MAYOREO
+  GENERAL
+}
+
+enum TipoDescuento {
+  PORCENTAJE
+  MONTO
+}
+
+enum TipoMedicamento {
+  ANTIBIOTICO
+  CONTROLADO
+}
+
+model Promocion {
+  id             Int                       @id @default(autoincrement())
+  tipo           TipoPromocion
+  tipo_descuento TipoDescuento
+  monto          Decimal                   @db.Decimal(10, 2)
+  productoId     BigInt?
+  producto       Producto?                 @relation(fields: [productoId], references: [id])
+  sucursalId     Int
+  sucursal       Sucursal                  @relation(fields: [sucursalId], references: [id])
+  fecha_inicio   DateTime?
+  fecha_fin      DateTime?
+  hora_inicio    DateTime?                 @db.Time
+  hora_fin       DateTime?                 @db.Time
+  descripcion    String
+  cantidad       Int?
+  activo         Int                       @default(1)
+  creadoEn       DateTime                  @default(now())
+  detalles_venta Detalle_venta_promocion[]
+
+  @@index([sucursalId])
+}
+
+model Detalle_venta_promocion {
+  id               Int @id @default(autoincrement())
+  id_detalle_venta Int
+  id_promocion     Int
+
+  detalle_venta Detalle_venta @relation(fields: [id_detalle_venta], references: [id])
+  promocion     Promocion     @relation(fields: [id_promocion], references: [id])
+
+  @@index([id_detalle_venta])
+  @@index([id_promocion])
+}
+
+enum NivelDistribuidor {
+  BRONCE
+  PLATA
+  ORO
+}
+
+model Distribuidor {
+  id                            Int               @id @default(autoincrement())
+  nombre_completo               String
+  telefono                      String
+  domicilio                     String?
+  email                         String?           @unique @db.VarChar(191)
+  nivel                         NivelDistribuidor @default(BRONCE)
+  descuento                     Float             @default(0) // % de 0 a 100
+  nombre_comercial              String?
+  activo                        Int               @default(1)
+  creadoEn                      DateTime          @default(now())
+  ineDocumento                  String?           @db.Text
+  constanciaFiscalDocumento     String?           @db.Text
+  comprobanteDomicilioDocumento String?           @db.Text
+
+  @@index([activo, nivel])
+  @@index([nombre_completo])
+}
+
+/// Catálogo SAT: c_RegimenFiscal (CFDI 4.0)
+model CatRegimenFiscal {
+  id                    Int       @id @default(autoincrement())
+  clave                 String    @unique @map("c_RegimenFiscal") @db.VarChar(3)
+  descripcion           String
+  aplica_fisica         Boolean
+  aplica_moral          Boolean
+  fecha_inicio_vigencia DateTime?
+  fecha_fin_vigencia    DateTime?
+  activo                Int       @default(1)
+
+  sucursales        Sucursal[]          @relation("Sucursal_Regimen")
+  clientes          Cliente[]           @relation("Cliente_Regimen")
+  CatUsoCFDIRegimen CatUsoCFDIRegimen[]
+
+  @@index([clave])
+  @@index([descripcion])
+}
+
+model CatClaveUnidad {
+  id                    Int       @id @default(autoincrement())
+  clave                 String    @unique @map("c_ClaveUnidad") @db.VarChar(20)
+  nombre                String
+  descripcion           String?
+  nota                  String?
+  fecha_inicio_vigencia DateTime?
+  fecha_fin_vigencia    DateTime?
+  simbolo               String?
+  activo                Int       @default(1)
+
+  productos Producto[] @relation("Producto_Unidad")
+
+  @@index([clave])
+  @@index([nombre])
+  @@index([descripcion])
+}
+
+model CatClaveProdServ {
+  id                           Int       @id @default(autoincrement())
+  clave                        String    @unique @map("c_ClaveProdServ") @db.VarChar(10)
+  descripcion                  String
+  incluir_iva_trasladado       String?   @db.VarChar(20)
+  incluir_ieps_trasladado      String?   @db.VarChar(20)
+  complemento_que_debe_incluir String?   @db.VarChar(255)
+  fecha_inicio_vigencia        DateTime?
+  fecha_fin_vigencia           DateTime?
+  estimulo_franja_fronteriza   Int?
+  palabras_similares           String?   @db.Text
+  activo                       Int       @default(1)
+
+  productos Producto[] @relation("Producto_ProdServ")
+
+  @@index([clave])
+  @@index([descripcion])
+}
+
+model Medico {
+  id              BigInt   @id @default(autoincrement())
+  cedula          String
+  nombre_completo String
+  direccion       String
+  sucursalId      Int
+  sucursal        Sucursal @relation(fields: [sucursalId], references: [id])
+  activo          Int      @default(1)
+  ventas          Venta[]
+
+  @@index([sucursalId, activo])
+}
+
+enum EstadoSolicitudIncidencia {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  CANCELADO
+}
+
+model TiposIncidenciaCROV {
+  id      Int     @id @default(autoincrement())
+  clave   String  @unique @db.VarChar(50)
+  nombre  String  @db.VarChar(100)
+  activo  Boolean @default(true)
+
+  solicitudes SolicitudesIncidenciaCROV[]
+
+  @@map("tipos_incidencia_crov")
+}
+
+model SolicitudesIncidenciaCROV {
+  id                  Int      @id @default(autoincrement())
+  id_empleados_crov   Int
+  id_tipos_incidencia Int
+  
+  fecha_inicio        DateTime @db.Date
+  fecha_fin           DateTime @db.Date
+  descripcion         String?  @db.Text
+  
+  estado              EstadoSolicitudIncidencia @default(PENDIENTE)
+  
+  motivo_rechazo      String?  @db.Text
+  
+  created_at          DateTime @default(now()) @db.Timestamp(0)
+  updated_at          DateTime @updatedAt @db.Timestamp(0)
+
+  empleado        Empleados_CROV      @relation(fields: [id_empleados_crov], references: [id])
+  tipo_incidencia TiposIncidenciaCROV @relation(fields: [id_tipos_incidencia], references: [id])
+
+  @@map("solicitudes_incidencia_crov")
+}

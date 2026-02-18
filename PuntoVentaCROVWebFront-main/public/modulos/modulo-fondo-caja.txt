@@ -1,0 +1,4 @@
+**Fondo de caja**: Se encuentra en dentro de la opción Caja, Muestra un reporte detallado de los ingresos por fondo de caja registrados en la sucursal. Permite filtrar los registros por un rango de fechas personalizado, mostrando el monto entregado, el usuario que entregó, el usuario que recibió y la fecha del movimiento. Los datos se presentan en una tabla ordenada cronológicamente y con diseño responsivo.
+
+Incluye opciones para exportar el reporte a Excel o PDF, generando archivos con la información tabulada y el total acumulado al final del documento. Los datos se obtienen de forma dinámica desde una API protegida con token, y cualquier error de carga se notifica visualmente al usuario. La interfaz utiliza componentes reutilizables (Button, Input, Table) y estilos con Tailwind CSS.
+

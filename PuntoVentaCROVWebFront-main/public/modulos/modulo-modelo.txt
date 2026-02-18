@@ -1,0 +1,6 @@
+Módulo Modelos (Clasificación de Productos):
+Este catálogo permite definir las variantes o versiones de tus productos (ej. Año 2024, Edición Especial).
+
+1. Agregar Nuevo: Haz clic en el botón para agregar modelo. Escribe el nombre deseado (ej. 'Clásico', 'Deportivo') y presiona "Registrar" para guardarlo.
+2. Modificar: Ubica el modelo en la lista y haz clic en el botón del lápiz. Realiza las correcciones al nombre y pulsa "Actualizar" para confirmar.
+3. Eliminar: Si deseas desactivar un modelo, presiona el botón rojo de basura correspondiente y confirma la acción cuando el sistema te lo solicite.

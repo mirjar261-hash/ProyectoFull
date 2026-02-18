@@ -1,0 +1,22 @@
+MÓDULO AGENDA Y ACTIVIDADES (CALENDARIO)
+
+OBJETIVO:
+Permite planificar, registrar y asignar actividades o recordatorios a los usuarios del sistema mediante una vista de calendario mensual.
+
+CÓMO AGREGAR UNA NUEVA ACTIVIDAD:
+1. Haz clic en cualquier recuadro (día) del calendario.
+2. Escribe un título breve y una descripción detallada.
+3. Verifica la fecha y asigna una hora específica.
+4. Selecciona el usuario responsable de realizar la actividad.
+5. (Opcional) Marca la casilla "Repetir" si es una tarea recurrente (mensual).
+6. Presiona "Registrar" para guardar.
+
+CÓMO MODIFICAR O ELIMINAR UNA ACTIVIDAD:
+1. Busca la actividad en el calendario (barra de color naranja).
+2. Haz clic sobre ella para abrir los detalles.
+3. Realiza los cambios necesarios y presiona "Actualizar".
+4. Si deseas borrarla, presiona el botón "Eliminar".
+
+NAVEGACIÓN:
+- Usa las flechas en la parte superior (< >) para cambiar entre el mes anterior y el siguiente.
+- El botón "Hoy" te regresa al mes actual.

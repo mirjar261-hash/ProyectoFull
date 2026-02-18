@@ -1,0 +1,25 @@
+Módulo Productos (Catálogo e Inventario):
+Desde aquí administras todos los artículos y servicios que vendes.
+
+1. Agregar Nuevo Producto:
+   - Inicia llenando el "Código" único (obligatorio) y el "Nombre Completo".
+   - Define el "Costo" base y el "Inventario Inicial".
+   - Clasifícalo asignando Departamento, Marca y Modelo.
+   - Configura los datos fiscales ("Claves SAT" e "Impuestos").
+   - Establece los "Precios de Venta" y sube una imagen si lo deseas.
+   - Si es un servicio intangible, marca la casilla "Es servicio".
+   - Presiona "Guardar" para finalizar.
+
+2. Modificar Producto:
+   - Haz clic en la lupa ("Buscar Producto") y selecciona el ítem con DOBLE CLIC para cargar sus datos.
+   - Edita cualquier campo necesario (precios, nombre, costos) y presiona "Actualizar".
+
+3. Eliminar Producto:
+   - Busca y carga el producto que deseas borrar.
+   - Presiona el botón rojo de "Basura" y confirma la acción para eliminarlo permanentemente.
+
+4. Gestión de Insumos (Recetas):
+   - Primero, carga el producto terminado (ej. Hamburguesa).
+   - Ve a la pestaña "Insumos".
+   - Busca el ingrediente (ej. Pan) y define qué cantidad se utiliza en la receta.
+   - Haz clic en "+" para agregarlo. El sistema recalculará el costo del producto principal automáticamente.

@@ -1,0 +1,2 @@
+**Gastos**: Permite registrar, editar y administrar los gastos realizados en la sucursal. Cada gasto incluye descripción, monto, fecha y usuario que lo registró. Valida los campos obligatorios antes de guardar. Muestra una lista filtrable por fechas y buscador por texto, permitiendo visualizar quién realizó cada gasto y cuándo. La gestión se realiza mediante un modal intuitivo, y permite editar o eliminar gastos fácilmente desde la tabla principal.
+

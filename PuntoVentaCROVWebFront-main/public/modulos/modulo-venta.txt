@@ -1,0 +1,29 @@
+Módulo Nueva Venta (Punto de Venta):
+Para realizar una venta, sigue el flujo general y ajusta según el método de pago:
+
+1. Pasos Generales:
+   - Inicia seleccionando al cliente. Para ventas rápidas, puedes dejarlo como "Sin cliente" (Público en general), EXCEPTO en ventas a crédito.
+   - Escanea el código de barras o busca el producto por nombre presionando la tecla F2.
+   - Puedes ajustar cantidades o eliminar artículos incorrectos en la tabla de gestión.
+   - Haz clic en "Guardar venta (F3)" para pasar a la pantalla de cobro.
+
+2. Según el Método de Pago:
+   - Venta de Contado: Asegúrate que el estado sea "CONTADO". En la pantalla de cobro, ingresa el efectivo recibido para calcular el cambio.
+   - Venta con Tarjeta: Cambia el estado a "TARJETA" antes de agregar productos. Al cobrar, el sistema asignará automáticamente el total al campo de tarjeta; solo verifica que coincida con la terminal bancaria.
+   - Venta a Crédito: Es OBLIGATORIO seleccionar un cliente registrado. Cambia el estado a "CRÉDITO". Al cobrar, el sistema mostrará el total como deuda, permitiendo registrar un anticipo si es necesario.
+
+3. Para terminar, presiona "Cobrar" para registrar la venta y generar el ticket.
+
+Módulo Devoluciones y Cancelaciones de Ventas:
+Para cancelar ventas o devolver productos, ve a la sección "Historial / Devoluciones":
+
+1. Devolución Total (Cancelar Ticket):
+   - Busca la venta usando los filtros de fecha o folio.
+   - Presiona el botón de "flechas cruzadas" que está en la fila principal de la venta. Esto devolverá TODOS los productos al inventario y cancelará el ticket.
+
+2. Devolución Parcial (Devolver solo un producto):
+   - Busca la venta pero NO presiones las flechas cruzadas principales.
+   - Haz clic en el icono del "Ojo" (Ver Detalles) para abrir el contenido de la venta.
+   - Dentro de la lista, busca el producto específico y presiona las "flechas cruzadas" de ese renglón. Solo ese ítem regresará al inventario.
+
+Nota de error: Si aparece el aviso "⛔ Sin Inventario", significa que no hay productos registrados en el catálogo y no podrás realizar ventas hasta que los des de alta.

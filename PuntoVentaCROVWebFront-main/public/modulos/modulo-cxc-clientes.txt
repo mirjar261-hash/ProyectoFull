@@ -1,0 +1,38 @@
+TITULO: 1. Buscar Clientes
+CONTENIDO: Utiliza este filtro para encontrar clientes por nombre, razón social o teléfono.
+
+TITULO: 1.1 Listado de Clientes
+CONTENIDO: Aquí aparecerán los clientes que tienen compras a crédito activas. Selecciona uno para habilitar las opciones.
+
+TITULO: 2. Ver Información Cliente
+CONTENIDO: Haz clic en este botón para desplegar la información detallada.
+
+TITULO: 2.1 Ver Información
+CONTENIDO: En esta ventana podrás consultar la ficha técnica completa del cliente.
+
+TITULO: 2.2 Información del Cliente
+CONTENIDO: Aquí se desglosan los datos de contacto, límites de crédito y días de plazo.
+
+TITULO: 2.3 Información de Facturación
+CONTENIDO: Datos fiscales registrados: RFC, Razón Social y Dirección.
+
+TITULO: 1. Info del Cliente
+CONTENIDO: Resumen de la venta seleccionada: Cliente, Total y Saldo Pendiente.
+
+TITULO: 2. Abonar a esta Venta
+CONTENIDO: Sección para registrar pagos a esta nota específica.
+
+TITULO: 2.1 Monto a Abonar
+CONTENIDO: Ingresa la cantidad. No puede ser mayor al saldo pendiente.
+
+TITULO: 2.2.2 Efectivo o Tarjeta
+CONTENIDO: Selecciona el método. Si eliges 'Tarjeta', deberás ingresar la referencia bancaria obligatoriamente.
+
+TITULO: 2.2.3 Referencia Tarjeta
+CONTENIDO: Campo habilitado solo para pagos con tarjeta. Ingresa los últimos dígitos o autorización.
+
+TITULO: 2.3 Abonar o Liquidar
+CONTENIDO: Usa 'Liquidar' para pagar el total restante automáticamente o 'Abonar' para el monto manual.
+
+TITULO: 3. Historial de Abonos
+CONTENIDO: Lista de pagos anteriores aplicados a esta venta.

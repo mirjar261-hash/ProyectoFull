@@ -1,0 +1,9 @@
+
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror:focus,
+.ProseMirror:focus-visible {
+  outline: none;
+}

@@ -1,0 +1,6 @@
+Módulo Departamentos (Categorías):
+Para administrar las clasificaciones de tus productos, dispones de tres funciones principales:
+
+1. Agregar Nuevo: Haz clic en el botón para agregar departamento. Escribe el nombre deseado (ej. 'Abarrotes', 'Farmacia') y presiona "Registrar" para guardarlo.
+2. Modificar: Ubica el departamento en la lista y haz clic en el botón del lápiz. Realiza las correcciones al nombre y pulsa "Actualizar" para confirmar.
+3. Eliminar: Si deseas desactivar un departamento, presiona el botón rojo de basura correspondiente y confirma la acción cuando el sistema te lo solicite.

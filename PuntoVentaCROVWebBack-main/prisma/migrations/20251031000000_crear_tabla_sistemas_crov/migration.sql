@@ -1,0 +1,7 @@
+CREATE TABLE `sistemas_crov` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(191) NOT NULL,
+  `activo` TINYINT NOT NULL DEFAULT 1,
+  `fecha_registro` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`)
+);

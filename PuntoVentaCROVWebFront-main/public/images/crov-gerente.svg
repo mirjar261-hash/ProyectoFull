@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="120" fill="url(#paint0_radial)"/>
+  <g filter="url(#shadow)">
+    <path d="M256 110C214 110 182 144 182 188C182 232 214 266 256 266C298 266 330 232 330 188C330 144 298 110 256 110Z" fill="#FBD6B7"/>
+    <path d="M256 118C226 118 202 144 202 176V198C202 218 216 234 236 236L256 238L276 236C296 234 310 218 310 198V176C310 144 286 118 256 118Z" fill="#2F1A11"/>
+    <path d="M208 186C208 206 216 222 228 222C240 222 248 206 248 186" stroke="#1F1410" stroke-width="8" stroke-linecap="round"/>
+    <path d="M304 186C304 206 296 222 284 222C272 222 264 206 264 186" stroke="#1F1410" stroke-width="8" stroke-linecap="round"/>
+    <path d="M232 210C240 214 248 218 256 218C264 218 272 214 280 210" stroke="#DD7D41" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M156 362C156 322 188 290 228 290H284C324 290 356 322 356 362V392C356 408 344 420 328 420H184C168 420 156 408 156 392V362Z" fill="#0F172A"/>
+    <path d="M196 332H316C327 332 336 341 336 352C336 363 327 372 316 372H196C185 372 176 363 176 352C176 341 185 332 196 332Z" fill="#13203A"/>
+    <path d="M208 292H304L320 360H192L208 292Z" fill="#13203A"/>
+    <path d="M220 300L208 360H232L244 324H268L280 360H304L292 300H220Z" fill="#1E40AF"/>
+    <rect x="210" y="388" width="92" height="40" rx="12" fill="#FF6B1A"/>
+    <text x="256" y="417" text-anchor="middle" font-family="'Segoe UI', 'Inter', sans-serif" font-size="24" font-weight="700" fill="#0F172A">CROV</text>
+  </g>
+  <defs>
+    <radialGradient id="paint0_radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(140 120) rotate(40) scale(520)">
+      <stop stop-color="#1E293B"/>
+      <stop offset="0.6" stop-color="#111827"/>
+      <stop offset="1" stop-color="#0B1220"/>
+    </radialGradient>
+    <filter id="shadow" x="90" y="90" width="332" height="360" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feOffset dy="6"/>
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0.2 0"/>
+      <feBlend in="SourceGraphic" in2="blur" mode="normal"/>
+    </filter>
+  </defs>
+</svg>

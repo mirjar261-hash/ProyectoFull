@@ -1,0 +1,22 @@
+Módulo Inversiones (Ingresos de Capital):
+Este módulo permite registrar y controlar entradas de dinero que NO provienen de ventas de productos (ej. Caja chica, Aportes de socios, Préstamos).
+
+1. Consultar Historial:
+   - Usa los "Filtros de Fechas" en la parte superior para revisar si una inversión ya fue registrada antes de duplicarla.
+   - La tabla muestra el historial con descripción, monto y responsable.
+
+2. Registrar Nueva Inversión:
+   - Haz clic en el botón "Agregar inversión".
+   - Descripción: Detalla el motivo del ingreso (ej. "Aporte inicial de caja", "Incremento de capital").
+   - Importe: Escribe la cantidad de dinero ingresada.
+   - Responsable: Asigna el usuario que realizó la operación.
+   - Finaliza haciendo clic en "Registrar".
+
+3. Editar Inversión:
+   - Busca el registro en la tabla y pulsa el botón del "Lápiz" (✏️).
+   - Se abrirá una ventana donde puedes corregir la Descripción o el Importe.
+   - Presiona "Guardar Cambios" para actualizar.
+
+4. Eliminar Inversión:
+   - Si registraste una inversión por error, localízala en la tabla.
+   - Haz clic en el botón de "Basura" (🗑️) para eliminarla o desactivarla del sistema.

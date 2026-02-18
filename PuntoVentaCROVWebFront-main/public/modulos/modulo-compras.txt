@@ -1,0 +1,13 @@
+Módulo Registrar Compra:
+Para dar de alta una nueva compra de mercancía, sigue estos pasos:
+1. Selecciona el "Proveedor" y define el "Estado de Compra" (Contado o Crédito).
+2. Si es necesario, añade notas en el campo "Observaciones".
+3. En la sección "Agregar Productos", escanea el código de barras o busca por nombre para añadirlos a la lista.
+4. Una vez completada la lista, presiona "Guardar compra" para finalizar el registro.
+
+Módulo Historial y Devolución de Compras:
+Para consultar o devolver compras anteriores:
+1. Haz clic en el botón "Historial / Devoluciones".
+2. Utiliza los filtros de fecha o folio para encontrar la compra específica.
+3. Para realizar una "Devolución Total" de la mercancía, haz clic en el botón de las flechas cruzadas.
+4. Si solo deseas consultar el contenido de la compra sin devolverla, haz clic en el icono del ojo ("Ver Detalles").

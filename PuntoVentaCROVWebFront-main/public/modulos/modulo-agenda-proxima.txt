@@ -1,0 +1,1 @@
+**Agenda próxima**: Muestra en el panel de control las actividades programadas para hoy y la semana siguiente. Los registros se obtienen desde la API protegida y se ordenan por fecha para mostrar la fecha, título y descripción en una tabla responsiva.
