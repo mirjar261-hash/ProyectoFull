@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useState, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,9 +16,18 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, RotateCcw, Bug, ClipboardList, BookOpen, LifeBuoy, ChevronUp, Minus, ChevronDown } from 'lucide-react';
-import TaskDescTextEditor from '@/components/crovinternal/Jira/TaskDescTextEditor/TaskDescTextEditor';
 import { toast } from 'sonner';
 import { getDeletedFiles } from '@/lib/utils';
+
+const TaskDescTextEditor = dynamic(
+  () => import('@/components/crovinternal/Jira/TaskDescTextEditor/TaskDescTextEditor'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[120px] animate-pulse rounded-md border border-gray-300 bg-gray-50" />
+    ),
+  },
+);
 
 interface TareaCrov {
   id: number;
@@ -319,6 +329,7 @@ const uploadPendingFilesAndReplaceHtml = async (html: string): Promise<string> =
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
+      {open ? (
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -709,6 +720,7 @@ const uploadPendingFilesAndReplaceHtml = async (html: string): Promise<string> =
           </div>
         </form>
       </DialogContent>
+      ) : null}
     </Dialog>
   );
 });

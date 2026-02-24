@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -261,6 +261,7 @@ export default function JiraPage() {
     empleado: '',
     sistema: '',
   });
+  const deferredBacklogFilters = useDeferredValue(backlogFilters);
   const [reporteSprintModalOpen, setReporteSprintModalOpen] = useState(false);
   const [reporteSprintLoading, setReporteSprintLoading] = useState(false);
   const [reporteSprintError, setReporteSprintError] = useState<string | null>(null);
@@ -1150,19 +1151,19 @@ ${JSON.stringify(contexto)}
 
   const matchesBacklogFilters = useCallback(
     (tarea: TareaCrov) => {
-      const matchesTitulo = backlogFilters.titulo
-        ? tarea.titulo.toLowerCase().includes(backlogFilters.titulo.toLowerCase())
+      const matchesTitulo = deferredBacklogFilters.titulo
+        ? tarea.titulo.toLowerCase().includes(deferredBacklogFilters.titulo.toLowerCase())
         : true;
-      const matchesSistema = backlogFilters.sistema
-        ? String(tarea.id_sistemas_crov) === backlogFilters.sistema
+      const matchesSistema = deferredBacklogFilters.sistema
+        ? String(tarea.id_sistemas_crov) === deferredBacklogFilters.sistema
         : true;
-      const matchesEmpleado = backlogFilters.empleado
-        ? String(tarea.id_empleados_crov) === backlogFilters.empleado
+      const matchesEmpleado = deferredBacklogFilters.empleado
+        ? String(tarea.id_empleados_crov) === deferredBacklogFilters.empleado
         : true;
 
       return matchesTitulo && matchesSistema && matchesEmpleado;
     },
-    [backlogFilters.empleado, backlogFilters.sistema, backlogFilters.titulo],
+    [deferredBacklogFilters.empleado, deferredBacklogFilters.sistema, deferredBacklogFilters.titulo],
   );
 
   const filteredBacklogTareas = useMemo(
@@ -1171,27 +1172,32 @@ ${JSON.stringify(contexto)}
   );
 
   const backlogSprintGroups = useMemo(() => {
+    const tareasPorSprint = new Map<number, TareaCrov[]>();
+
+    filteredBacklogTareas.forEach((tarea) => {
+      if (!tarea.id_sprint) return;
+      const sprintId = tarea.id_sprint;
+      const bucket = tareasPorSprint.get(sprintId);
+      if (bucket) {
+        bucket.push(tarea);
+      } else {
+        tareasPorSprint.set(sprintId, [tarea]);
+      }
+    });
+
     const sprintsConTareas = sprints
-      .map((sprint) => ({
-        id: sprint.id,
-        nombre: sprintNameById.get(sprint.id) || `Sprint_${sprint.id}`,
-        tareas: filteredBacklogTareas.filter((tarea) => tarea.id_sprint === sprint.id),
-      }))
+      .map((sprint) => {
+        const tareasGrupo = tareasPorSprint.get(sprint.id) || [];
+        return {
+          id: sprint.id,
+          nombre: sprintNameById.get(sprint.id) || `Sprint_${sprint.id}`,
+          tareas: tareasGrupo,
+        };
+      })
       .filter((group) => group.tareas.length > 0);
 
-    const sprintsDesconocidos = filteredBacklogTareas
-      .filter((tarea) => tarea.id_sprint && !sprintNameById.has(tarea.id_sprint))
-      .reduce(
-        (acc, tarea) => {
-          const sprintId = tarea.id_sprint as number;
-          const existing = acc.get(sprintId) || [];
-          acc.set(sprintId, [...existing, tarea]);
-          return acc;
-        },
-        new Map<number, TareaCrov[]>(),
-      );
-
-    const sprintsDesconocidosOrdenados = Array.from(sprintsDesconocidos.entries())
+    const sprintsDesconocidosOrdenados = Array.from(tareasPorSprint.entries())
+      .filter(([id]) => !sprintNameById.has(id))
       .sort((a, b) => b[0] - a[0])
       .map(([id, tareasGrupo]) => ({
         id,
@@ -2528,6 +2534,7 @@ ${JSON.stringify(contexto)}
           </TabsContent>
 
           <TabsContent value="backlog" className="space-y-4">
+            {activeTab === 'backlog' ? (
             <div className="flex justify-end">
               <Button 
                 className="bg-orange-500 hover:bg-orange-600"
@@ -2686,6 +2693,7 @@ ${JSON.stringify(contexto)}
                 <div className="border-t">{renderTareasTable(backlogTareas)}</div>
               </details>
             </div>
+            ) : null}
           </TabsContent>
         </Tabs>
       </CardContent>
