@@ -31,7 +31,7 @@ import {
   List, 
   Scale, 
   Lock,
-  AlertCircle // Importado para las alertas
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,6 @@ import { cn } from '@/lib/utils';
 import GuideArrowOverlay from '@/components/GuideArrows'; 
 import GuideModal, { GuideStep } from '@/components/GuideModal';
 
-// Extendemos la interfaz para soportar el cambio de pestaña automático y el ICONO
 interface GuideStepWithTab extends GuideStep {
   requiredTab?: 'producto' | 'insumos';
   icon?: React.ReactNode; 
@@ -137,7 +136,7 @@ const GUIDE_FLOW_UPDATE: GuideStepWithTab[] = [
     targetKey: "btn-search-product",
     title: "1. Modificar: Buscar",
     icon: <Search className="w-6 h-6 text-blue-500" />,
-    content: "Para modificar, primero debes encontrar el producto. Haz clic aquí para abrir el buscador.",
+    content: "Para modificar, primero debes encontrar el producto. Al darle Siguiente, abriremos el buscador por ti.",
     placement: "left",
     modalPosition: "bottom-left",
     requiredTab: 'producto'
@@ -146,7 +145,7 @@ const GUIDE_FLOW_UPDATE: GuideStepWithTab[] = [
     targetKey: "btn-search-product",
     title: "2. Modificar: Seleccionar",
     icon: <MousePointerClick className="w-6 h-6 text-blue-500" />,
-    content: "En la ventana que se abrirá, busca tu producto por nombre o código y haz DOBLE CLIC sobre él para cargar sus datos.",
+    content: "En la ventana, busca tu producto por nombre o código y haz DOBLE CLIC sobre él para cargar sus datos.",
     placement: "left",
     modalPosition: "bottom-left",
     requiredTab: 'producto'
@@ -176,7 +175,7 @@ const GUIDE_FLOW_DELETE: GuideStepWithTab[] = [
     targetKey: "btn-search-product",
     title: "1. Eliminar: Buscar",
     icon: <Search className="w-6 h-6 text-blue-500" />,
-    content: "Busca el producto que deseas eliminar haciendo clic aquí.",
+    content: "Busca el producto que deseas eliminar. Al darle a Siguiente abriremos el buscador.",
     placement: "left",
     modalPosition: "bottom-left",
     requiredTab: 'producto'
@@ -576,7 +575,6 @@ const hydrateSatChipsIfNeeded = async (
   }
 };
 
-
 export default function CrearProducto() {
   const [form, setForm] = useState<ProductoForm>({});
   const [imagenPreview, setImagenPreview] = useState<string | null>(null);
@@ -609,7 +607,6 @@ export default function CrearProducto() {
 
   // Iniciar una guía específica
   const startGuide = (mode: 'CREATE' | 'UPDATE' | 'DELETE' | 'INSUMOS') => {
-    // Si está vacío, solo permitimos CREATE
     if (isInventoryEmpty && mode !== 'CREATE') {
         toast.warning("No hay productos registrados. Debes agregar un producto primero.");
         return;
@@ -630,21 +627,18 @@ export default function CrearProducto() {
     setCurrentStepIndex(0);
     setShowGuideMenu(false);
     
-    // Si la guía empieza en otra pestaña, cambiamos antes
     if(steps[0].requiredTab && steps[0].requiredTab !== activeTab) {
       setActiveTab(steps[0].requiredTab);
     }
     
-    // Timeout para asegurar que el DOM esté listo
     setTimeout(() => triggerStep(0, steps), 100);
   };
 
-  // Función para cerrar la guía
   const closeGuide = () => {
     setGuideActive(false);
   };
 
-  // Función para avanzar paso
+  // --- 🔥 MAGIA: APERTURA AUTOMÁTICA DEL BUSCADOR AL AVANZAR EN LA GUÍA ---
   const handleNextStep = () => {
     if (currentStepIndex < currentSteps.length - 1) {
       const nextIndex = currentStepIndex + 1;
@@ -655,6 +649,11 @@ export default function CrearProducto() {
         setActiveTab(nextStep.requiredTab);
       }
       
+      // 🔥 Abrir buscador mágicamente en el paso 2 de UPDATE o DELETE
+      if ((currentGuideMode === 'UPDATE' || currentGuideMode === 'DELETE') && nextIndex === 1) {
+        setSearchOpen(true);
+      }
+
       setCurrentStepIndex(nextIndex);
     } else {
       closeGuide();
@@ -671,11 +670,15 @@ export default function CrearProducto() {
         setActiveTab(prevStep.requiredTab);
       }
 
+      // 🔥 Cerrar buscador si retrocedemos al paso 1 en UPDATE o DELETE
+      if ((currentGuideMode === 'UPDATE' || currentGuideMode === 'DELETE') && prevIndex === 0) {
+        setSearchOpen(false);
+      }
+
       setCurrentStepIndex(prevIndex);
     }
   };
 
-  // Lógica para encadenar guías: Create -> Update -> Delete -> Insumos
   const getNextGuideInfo = () => {
     if (currentGuideMode === 'CREATE') return { label: 'Modificar', mode: 'UPDATE' as const };
     if (currentGuideMode === 'UPDATE') return { label: 'Eliminar', mode: 'DELETE' as const };
@@ -685,11 +688,9 @@ export default function CrearProducto() {
 
   const nextGuideInfo = getNextGuideInfo();
 
-  // Función auxiliar para trigger
   const triggerStep = (index: number, steps: GuideStepWithTab[]) => {
   };
 
-  // --- LÓGICA CRÍTICA: DETECCIÓN DE INVENTARIO ---
   const checkInventoryAndStart = async () => {
     try {
       const params = new URLSearchParams({
@@ -708,33 +709,24 @@ export default function CrearProducto() {
       const hasProducts = products.length > 0;
 
       if (hasProducts) {
-        // CASO A: HAY PRODUCTOS
         setIsInventoryEmpty(false);
-        // Iniciamos CREATE solo si es la primera vez
         const hasSeen = localStorage.getItem('hasSeenProductGuide_CREATE');
         if (!hasSeen) {
             startGuide('CREATE');
             localStorage.setItem('hasSeenProductGuide_CREATE', 'true');
         }
       } else {
-        // CASO B: LISTA VACÍA
         throw new Error("Lista vacía"); 
       }
       
     } catch (error) {
-      // CASO C: VACÍO O ERROR -> Modo Bloqueo (Solo Agregar)
       console.warn("Inventario vacío o error, forzando modo Agregar:", error);
       setIsInventoryEmpty(true);
-      
-      // Iniciamos la guía de agregar obligatoriamente
       startGuide('CREATE');
       toast.warning("No hay productos registrados. Comienza agregando uno.");
-      
-      // NO guardamos en localStorage para que insista
     }
   };
 
-  // --- AUTO-START ---
   useEffect(() => {
       const timer = setTimeout(() => {
         checkInventoryAndStart();
@@ -742,7 +734,6 @@ export default function CrearProducto() {
       return () => clearTimeout(timer);
       // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   const esServicio = form.servicio === 1;
   const [insumoNombre, setInsumoNombre] = useState('');
@@ -1151,10 +1142,10 @@ export default function CrearProducto() {
 
     fetchData();
   }, []);
+  
   const loadProductData = (data: any) => {
     if (!data) return;
 
-    // --- NUEVO: AVANCE AUTOMÁTICO DE GUÍA AL SELECCIONAR UN PRODUCTO ---
     if (guideActive) {
       if (currentGuideMode === 'UPDATE' && currentStepIndex === 1) {
           setTimeout(() => handleNextStep(), 400); 
@@ -1605,7 +1596,6 @@ export default function CrearProducto() {
       unidad_medida: orNull(form.unidad_medida),
       clave_unidad_medida: orNull(selectedUnidadSAT?.clave ?? (form as any).clave_unidad_medida),
       clave_prodserv: orNull(selectedProdServSAT?.clave ?? (form as any).clave_prodserv),
-      // unidad_medida: unidadMedidaApi,
       activo: 1,
       servicio: form.servicio ?? 0,
       utilidad1: calcularUtilidadNumeroInner(clean.precio1),
@@ -1679,7 +1669,6 @@ export default function CrearProducto() {
       }
 
       // === NUEVO: DESBLOQUEO AUTOMÁTICO ===
-      // Si se guardó correctamente, significa que el inventario ya NO está vacío.
       setIsInventoryEmpty(false);
 
       const productId = form.id ?? data?.id;
@@ -1792,7 +1781,6 @@ export default function CrearProducto() {
       {/* --- GUÍA INTERACTIVA: Flechas y Modal --- */}
       {guideActive && currentSteps.length > 0 && (
         <>
-          {/* NUEVO: Ocultamos la flecha si hay un buscador abierto */}
           {!searchOpen && !insumoSearchOpen && (
               <GuideArrowOverlay 
                 activeKey={currentSteps[currentStepIndex].targetKey}
@@ -1909,9 +1897,8 @@ export default function CrearProducto() {
                 }
                 setSearchOpen(true);
             }}
-            // Clase condicional para opacidad visual
             className={isInventoryEmpty ? "opacity-50 cursor-not-allowed" : ""}
-            data-guide="btn-search-product" // [GUIA: Paso 1 Update/Delete]
+            data-guide="btn-search-product" 
           >
             <Search className="w-4 h-4 mr-1" /> Buscar Producto/Servicio
           </Button>
@@ -1920,7 +1907,7 @@ export default function CrearProducto() {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'producto' | 'insumos')} className="space-y-6">
         <TabsList>
           <TabsTrigger value="producto">Producto/Servicio</TabsTrigger>
-          <TabsTrigger value="insumos" data-guide="tab-insumos">Insumos</TabsTrigger> {/* [GUIA: Tab Insumos] */}
+          <TabsTrigger value="insumos" data-guide="tab-insumos">Insumos</TabsTrigger>
         </TabsList>
         <TabsContent value="producto">
           <div className="grid grid-cols-2 gap-6">
@@ -1928,7 +1915,7 @@ export default function CrearProducto() {
               <div>
                 <label className="block text-sm font-medium mb-1 ">Código:*</label>
                 <Input
-                  data-guide="codigo" // [GUIA: Paso 1]
+                  data-guide="codigo" 
                   name="codigo"
                   value={form.codigo || ''}
                   onChange={handleChange}
@@ -1952,7 +1939,7 @@ export default function CrearProducto() {
               <div>
                 <label className="block text-sm font-medium mb-1">Nombre del producto/servicio:*</label>
                 <Input 
-                  data-guide="nombre" // [GUIA: Paso 2]
+                  data-guide="nombre" 
                   name="nombre" 
                   value={form.nombre || ''} 
                   onChange={handleChange}
@@ -1960,8 +1947,7 @@ export default function CrearProducto() {
                 />
               </div>
               
-              {/* Grupo Costos e Inventario */}
-              <div className="space-y-4" data-guide="costos-inventario"> {/* [GUIA: Paso 3] */}
+              <div className="space-y-4" data-guide="costos-inventario">
                 <div>
                   <label className="block text-sm font-medium mb-1">Inventario mínimo</label>
                   <Input
@@ -2017,7 +2003,7 @@ export default function CrearProducto() {
 
             <div className="space-y-4">
               <div className="flex gap-4">
-                <div className="flex-1 space-y-4" data-guide="clasificacion"> {/* [GUIA: Paso 4] */}
+                <div className="flex-1 space-y-4" data-guide="clasificacion">
                   <div>
                     <label className="block text-sm font-medium mb-1">Departamento</label>
                     <select
@@ -2062,7 +2048,7 @@ export default function CrearProducto() {
                   </div>
                 </div>
                 
-                <div className="flex flex-col items-center" data-guide="imagen-upload"> {/* [GUIA: Paso 5] */}
+                <div className="flex flex-col items-center" data-guide="imagen-upload">
                   <label className="block text-sm font-medium mb-1">Imagen del producto/servicio</label>
                   <div className="w-[150px] h-[150px] border rounded flex items-center justify-center overflow-hidden">
                     {imagenPreview && (
@@ -2123,7 +2109,7 @@ export default function CrearProducto() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-guide="sat-block"> {/* [GUIA: Paso 6] */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-guide="sat-block">
                 <div className="space-y-1">
                   <label className="block text-sm font-medium">Clave Unidad (SAT)</label>
                   <div className="flex items-center gap-2">
@@ -2189,7 +2175,7 @@ export default function CrearProducto() {
                 </div>
               </div>
 
-              <div data-guide="impuestos"> {/* [GUIA: Paso 7] */}
+              <div data-guide="impuestos">
                 <label className="block text-sm font-medium mb-1">Tipo de IVA</label>
                 <select
                   name="impuesto"
@@ -2263,7 +2249,7 @@ export default function CrearProducto() {
 
           <div 
             className="mt-10 space-y-6 rounded-xl border border-border bg-white/5 p-6 shadow-sm dark:bg-slate-900/30"
-            data-guide="precios-section" // [GUIA: Paso 8]
+            data-guide="precios-section"
           >
             <div>
               <h3 className="text-lg font-semibold">Precios y utilidades</h3>
@@ -2314,14 +2300,14 @@ export default function CrearProducto() {
           </div>
 
           <div className="flex justify-end gap-4 mt-6">
-            <Button id="btnGuardar" onClick={guardarProducto} data-guide="btn-guardar"> {/* [GUIA: Paso 9] */}
+            <Button id="btnGuardar" onClick={guardarProducto} data-guide="btn-guardar">
               <Save className="w-4 h-4 mr-2" />
               {form.id ? 'Actualizar' : 'Guardar'}
             </Button>
             <Button 
               variant="destructive" 
               onClick={eliminarProducto}
-              data-guide="btn-delete" // [GUIA: Paso Delete]
+              data-guide="btn-delete"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Eliminar
@@ -2383,7 +2369,7 @@ export default function CrearProducto() {
                         setInsumoSearchOpen(true)
                     }} 
                     className={`whitespace-nowrap ${isInventoryEmpty ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    data-guide="btn-search-insumo" // [GUIA: Search Insumo]
+                    data-guide="btn-search-insumo"
                   >
                     <Search className="w-4 h-4 mr-2" />
                     Buscar insumo
@@ -2416,7 +2402,7 @@ export default function CrearProducto() {
 
                 <div 
                   className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3"
-                  data-guide="insumos-inputs" // [GUIA: Inputs Insumo]
+                  data-guide="insumos-inputs"
                 >
                   <div>
                     <div className="text-xs text-gray-500 mb-1">Costo</div>
@@ -2457,7 +2443,7 @@ export default function CrearProducto() {
                     }
                     className="w-full sm:w-auto"
                     title={form.id ? '' : 'Selecciona un producto primero'}
-                    data-guide="btn-add-insumo" // [GUIA: Add Insumo]
+                    data-guide="btn-add-insumo"
                   >
                     {editIndex !== null ? (
                       <>

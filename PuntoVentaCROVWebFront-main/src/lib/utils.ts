@@ -5,20 +5,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const extractImageUrlsFromHtml = (html: string): Set<string> => {
+export const extractFileUrlsFromHtml = (html: string): Set<string> => {
+  if (!html) return new Set();
+  
   const doc = new DOMParser().parseFromString(html, "text/html");
-  const imgs = Array.from(doc.querySelectorAll("img"));
+  
+  // Obtener los src de las imágenes
+  const imgUrls = Array.from(doc.querySelectorAll("img"))
+    .map((img) => img.getAttribute("src"));
+
+  // Obtener los href de los enlaces (archivos adjuntos)
+  const fileUrls = Array.from(doc.querySelectorAll("a"))
+    .map((a) => a.getAttribute("href"));
+
+  const allUrls = [...imgUrls, ...fileUrls];
 
   return new Set(
-    imgs
-      .map((img) => img.getAttribute("src"))
-      .filter((src): src is string => !!src && src.startsWith("https"))
+    allUrls.filter((url): url is string => !!url && url.startsWith("https"))
   );
 };
 
-export const getDeletedImages = (oldHtml: string, newHtml: string): string[] => {
-  const oldImages = extractImageUrlsFromHtml(oldHtml);
-  const newImages = extractImageUrlsFromHtml(newHtml);
+export const getDeletedFiles = (oldHtml: string, newHtml: string): string[] => {
+  const oldImages = extractFileUrlsFromHtml(oldHtml);
+  const newImages = extractFileUrlsFromHtml(newHtml);
 
   return [...oldImages].filter((url) => !newImages.has(url));
 };

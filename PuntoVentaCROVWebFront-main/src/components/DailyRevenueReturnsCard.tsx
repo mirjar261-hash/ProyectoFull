@@ -63,7 +63,7 @@ export default function DailyRevenueReturnsCard() {
 
         const [detallesDevRes, ventasSemanaRes] = await Promise.all([
           axios.get(
-            `${apiUrl}/gerente/detallesVentasDevueltas7dias?sucursalId=${sucursalId}`,
+            `${apiUrl}/gerente/ventasDevueltas7dias?sucursalId=${sucursalId}`,
             { headers }
           ),
           axios.get(

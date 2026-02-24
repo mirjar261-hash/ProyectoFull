@@ -1349,8 +1349,8 @@ export default function VentaForm({ active, onPaymentStart, onSearchOpen, onDeta
       precio: it.precio,
       descuento: it.descuento + descuentoGeneral,
       total: it.total,
-      descuentoind: it.descuento,
-      descuentogeneral: descuentoGeneral,
+      descuentoind: it.descuento ?? 0, // MODIFICADO: Se asegura que no sea undefined
+      descuento_pesos: descuentoGeneral, // MODIFICADO: Alineado con nombre de columna en DB
       promociones: it.promociones || [],
     }));
 
@@ -1382,6 +1382,7 @@ export default function VentaForm({ active, onPaymentStart, onSearchOpen, onDeta
       ahorro: 0,
       receta: recetaVenta,
       medico_id: medicoVentaId,
+      descuento_pesos: descuentoGeneral, // MODIFICADO: Alineado con nombre de columna en DB
       detalles: cotizacionId ? { deleteMany: {}, create: detallesPayload } : detallesPayload,
     };
 
@@ -1556,6 +1557,7 @@ export default function VentaForm({ active, onPaymentStart, onSearchOpen, onDeta
       descuento: descuentoGeneral,
       tipo_descuento: 'N/A',
       ahorro: 0,
+      descuento_pesos: descuentoGeneral, // MODIFICADO: Alineado con DB
       detalles: items.filter((it) => !isNaN(Number(it.id))).map((it) => ({
         id_producto: Number(it.id),
         cantidad: it.cantidad,
@@ -1564,11 +1566,10 @@ export default function VentaForm({ active, onPaymentStart, onSearchOpen, onDeta
         ieps: 0,
         precio: it.precio,
         descuento: it.descuento + descuentoGeneral,
-        descuentoind: it.descuento,
-        descuentogeneral: descuentoGeneral,
+        descuentoind: it.descuento ?? 0, // MODIFICADO
+        descuento_pesos: descuentoGeneral, // MODIFICADO
         total: it.total,
       })),
-      descuentogeneral: descuentoGeneral,
     };
     try {
       await axios.post(`${apiUrl}/venta`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -1750,14 +1751,14 @@ export default function VentaForm({ active, onPaymentStart, onSearchOpen, onDeta
         <Table>
           <TableHeader className="bg-orange-100">
             <TableRow>
-              <TableHead>Producto</TableHead>
-              <TableHead className="text-center w-24">Cantidad</TableHead>
-              <TableHead className="text-center">Cant. existente</TableHead>
-              <TableHead className="text-right">Precio</TableHead>
-              <TableHead className="text-center">Descuento %</TableHead>
-              <TableHead>Promociones aplicadas</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead></TableHead>
+              <th className="p-2 text-left">Producto</th>
+              <th className="p-2 text-center w-24">Cantidad</th>
+              <th className="p-2 text-center">Cant. existente</th>
+              <th className="p-2 text-right">Precio</th>
+              <th className="p-2 text-center">Descuento %</th>
+              <th className="p-2 text-left">Promociones aplicadas</th>
+              <th className="p-2 text-right">Total</th>
+              <th className="p-2"></th>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -2028,7 +2029,7 @@ export default function VentaForm({ active, onPaymentStart, onSearchOpen, onDeta
           <DialogFooter><Button onClick={() => setModalDetallesOpen(false)} variant="ghost">Cerrar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-       
+        
       <Dialog open={modalProductoOpen} onOpenChange={(open) => { setModalProductoOpen(open); if (!open) { setBusquedaProducto(''); setResultadosProducto([]); setIndiceProductoSeleccionado(-1); focusBusqueda(); } }}>
         <DialogOverlay className="bg-black/50 fixed inset-0 z-40" />
         <DialogContent className="bg-white z-50 rounded-2xl max-w-6xl mx-auto shadow-xl border p-6 space-y-4" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>

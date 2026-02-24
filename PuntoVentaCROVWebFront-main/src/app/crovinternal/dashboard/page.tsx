@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { getInternalAuthHeaders } from '@/lib/internalAuth';
+import CalendarioCumpleanios from '@/components/crovinternal/dashboard/CalendarioCumpleanios';
 
 interface ClienteCROV {
   id: number;
@@ -155,6 +156,9 @@ export default function InternalDashboard() {
           </p>
         </div>
       </div>
+      
+      <CalendarioCumpleanios authHeaders={authHeaders}/>
+
     </div>
   );
 }

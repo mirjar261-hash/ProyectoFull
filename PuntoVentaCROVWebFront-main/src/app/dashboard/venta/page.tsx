@@ -183,12 +183,12 @@ const GUIDE_FLOW_CREDIT: GuideStep[] = [
   }
 ];
 
-// FLUJO 4: DEVOLUCIONES
+// FLUJO 4: DEVOLUCIONES (ACTUALIZADO CON F4)
 const GUIDE_FLOW_RETURN_TOTAL: GuideStep[] = [
   {
     targetKey: "btn-buscar-ventas",
     title: "1. Historial de Ventas",
-    content: "Haz clic en 'Historial / Devoluciones' para buscar el ticket.",
+    content: "Haz clic en 'Historial / Devoluciones (F4)' o presiona la tecla F4 para abrir el buscador de tickets.",
     placement: "bottom",
     modalPosition: "bottom-right",
     disableNext: true
@@ -210,12 +210,12 @@ const GUIDE_FLOW_RETURN_TOTAL: GuideStep[] = [
   }
 ];
 
-// FLUJO 5: DEVOLUCIÓN PARCIAL
+// FLUJO 5: DEVOLUCIÓN PARCIAL (ACTUALIZADO CON F4)
 const GUIDE_FLOW_RETURN_PARTIAL: GuideStep[] = [
   {
     targetKey: "btn-buscar-ventas",
     title: "1. Historial de Ventas",
-    content: "Haz clic en 'Historial / Devoluciones' para iniciar.",
+    content: "Haz clic en 'Historial / Devoluciones (F4)' o presiona la tecla F4 para iniciar.",
     placement: "bottom",
     modalPosition: "bottom-right",
     disableNext: true
@@ -256,7 +256,6 @@ const GUIDE_FLOW_EMPTY: GuideStep[] = [
     disableNext: true 
   }
 ];
-
 
 export default function VentasPage() {
   const [tabs, setTabs] = useState<string[]>(['0']);
@@ -411,19 +410,49 @@ export default function VentasPage() {
      startGuide(mode);
   };
 
-  // --- HANDLER BOTÓN HISTORIAL (Validación Local) ---
+  // --- HANDLER BOTÓN HISTORIAL (CLIC AUTOMÁTICO EN EL MODAL REAL) ---
   const handleOpenHistory = () => {
     if (!hasSales) {
         toast.warning("No hay historial de ventas disponible.", {
             description: "Realiza una venta primero para ver el historial."
         });
-        return; // Detiene la ejecución, no abre nada
+        return; 
     }
-    // Si hay ventas, el comportamiento normal (gestionado por VentaForm o lógica interna) ocurre.
-    // Como VentaForm es quien tiene el modal de búsqueda, este botón es principalmente para
-    // la guía o navegación global, pero su validación es crucial aquí.
-    toast.info("Abre el buscador de ventas (F3) para ver detalles.");
+
+    // Buscamos el panel de la pestaña que está activa en este momento
+    const activeTabElement = document.querySelector('[role="tabpanel"][data-state="active"]');
+
+    if (activeTabElement) {
+        // Buscamos el botón real de "Buscar ventas" dentro de ese formulario y le hacemos clic
+        const searchBtn = Array.from(activeTabElement.querySelectorAll('button')).find(
+            (btn) => btn.textContent?.includes('Buscar ventas')
+        );
+
+        if (searchBtn) {
+            (searchBtn as HTMLButtonElement).click();
+            return; // ¡Éxito! Se abre la ventana
+        }
+    }
+
+    // Mensaje de respaldo por si no encuentra el botón
+    toast.info("Haz clic en el botón 'Buscar ventas' a la derecha de la pantalla.");
   };
+
+  // --- ATAJO DE TECLADO F4 PARA ABRIR HISTORIAL ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F4') {
+        e.preventDefault(); // Evita la acción por defecto del navegador
+        handleOpenHistory(); 
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hasSales]); // Depende de hasSales para que el F4 también se bloquee si no hay ventas
 
   // CALLBACKS DE AVANCE AUTOMÁTICO
   const handlePaymentModalOpened = () => {
@@ -493,16 +522,16 @@ export default function VentasPage() {
             <h1 className="text-2xl font-bold text-orange-600" data-guide="ventas-title">Ventas</h1>
             
             <div className="flex gap-2">
-                {/* BOTÓN HISTORIAL CON VALIDACIÓN */}
+                {/* BOTÓN HISTORIAL CON VALIDACIÓN Y ATAJO F4 */}
                 <Button 
                     variant="outline" 
-                    onClick={handleOpenHistory} // Usa la función con validación
-                    disabled={!hasSales}        // Bloqueo visual
+                    onClick={handleOpenHistory}
+                    disabled={!hasSales}
                     className={!hasSales ? "opacity-50 cursor-not-allowed" : ""}
                     data-guide="btn-buscar-ventas" 
                 >
                     <History className="w-4 h-4 mr-2" /> 
-                    Historial / Devoluciones
+                    Historial / Devoluciones (F4)
                 </Button>
 
                 <Button onClick={agregarTab} className="bg-orange-500 text-white" data-guide="btn-nueva-venta">
@@ -607,14 +636,12 @@ export default function VentasPage() {
         <div data-guide="active-venta-content">
           {tabs.map((t) => (
             <TabsContent key={t} value={t} forceMount className={activeTab === t ? "" : "hidden"}>
-              {/* PASAMOS LA PROPIEDAD PARA EL BLOQUEO DEL BOTÓN F2 */}
               <VentaForm 
                 active={activeTab === t} 
                 onPaymentStart={handlePaymentModalOpened}
                 onSearchOpen={handleSearchModalOpened}
                 onDetailsOpen={handleDetailsModalOpened}
                 onProductModalChange={setIsProductModalOpen}
-                //isInventoryEmpty={isInventoryEmpty} // <--- ESENCIAL PARA EL BLOQUEO
               />
             </TabsContent>
           ))}

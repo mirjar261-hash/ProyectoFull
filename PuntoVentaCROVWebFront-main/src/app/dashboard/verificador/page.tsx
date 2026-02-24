@@ -162,17 +162,15 @@ export default function VerificadorPrecio() {
   };
 
   // --- AUTO-START ---
-  useEffect(() => {
-    const hasSeen = localStorage.getItem('hasSeenVerificadorGuide');
-    if (!hasSeen) {
-      const timer = setTimeout(() => {
-        checkInventoryAndStart(); 
-      }, 1000); 
-      return () => clearTimeout(timer);
-    } else {
-       checkInventoryAndStart();
-    }
-  }, []);
+ useEffect(() => {
+  const hasSeen = localStorage.getItem('hasSeenVerificadorGuide');
+  if (!hasSeen) {
+    const timer = setTimeout(() => {
+      checkInventoryAndStart(); 
+    }, 1000); 
+    return () => clearTimeout(timer);
+  }
+}, []);
 
   // --- DETECTORES DE PASOS ---
   useEffect(() => {

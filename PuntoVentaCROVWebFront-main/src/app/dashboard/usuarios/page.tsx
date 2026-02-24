@@ -308,8 +308,11 @@ export default function UsuariosPage() {
     }
   }, []);
 
-  const errorClass = (...keys: string[]) =>
-    keys.some(k => errores?.[k]) ? 'border-red-500 focus-visible:ring-red-200' : '';
+  // --- Helpers visuales de error (MODIFICADO: Grosor e Intensidad) ---
+  const errorClass = (field: string) =>
+    errores?.[field] 
+      ? 'border-red-600 border-2 shadow-[0_0_5px_rgba(220,38,38,0.2)] focus-visible:ring-red-500 placeholder:text-red-400' 
+      : '';
 
 
   const cargarSesion = async () => {
@@ -392,10 +395,13 @@ export default function UsuariosPage() {
 const guardar = async () => {
   const nuevosErrores: any = {};
 
+  // Validar campos vacíos (nombre, apellidos, correo, perfil)
   ['nombre', 'apellidos', 'correo', 'perfil'].forEach(campo => {
-    if (!form[campo as keyof typeof form]) nuevosErrores[campo] = true;
+    if (!form[campo as keyof typeof form]?.toString().trim()) nuevosErrores[campo] = true;
   });
-  if (!editando && !form.password) nuevosErrores.password = true;
+  
+  // Validar password solo en creación
+  if (!editando && !form.password?.trim()) nuevosErrores.password = true;
 
   const telClean = onlyDigits(form.telefono || '');
   if (telClean.length !== 10) nuevosErrores.telefono = true;
@@ -741,7 +747,7 @@ const guardar = async () => {
                   (
                     <Button 
                         size="sm" 
-                        variant="destructive" 
+                        variant="outline" 
                         onClick={() => desactivar(u.id)}
                         data-guide={index === 0 ? "btn-delete-user" : undefined} // SOLO 1ER USUARIO
                     >
@@ -769,27 +775,43 @@ const guardar = async () => {
 
           <div className="grid grid-cols-2 gap-4 py-4">
             <div data-guide="input-nombre">
-                <Input placeholder="Nombre" className={errores.nombre ? 'border-red-500' : ''} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+                <Input 
+                  placeholder={errores.nombre ? "⚠️ Campo vacío" : "Nombre"} 
+                  className={errorClass('nombre')} 
+                  value={form.nombre} 
+                  onChange={(e) => {
+                    setForm({ ...form, nombre: e.target.value });
+                    if(errores.nombre) setErrores(prev => ({...prev, nombre: false}));
+                  }} 
+                />
             </div>
-            <Input placeholder="Apellidos" className={errores.apellidos ? 'border-red-500' : ''} value={form.apellidos} onChange={(e) => setForm({ ...form, apellidos: e.target.value })} />
+            <Input 
+              placeholder={errores.apellidos ? "⚠️ Campo vacío" : "Apellidos"} 
+              className={errorClass('apellidos')} 
+              value={form.apellidos} 
+              onChange={(e) => {
+                setForm({ ...form, apellidos: e.target.value });
+                if(errores.apellidos) setErrores(prev => ({...prev, apellidos: false}));
+              }} 
+            />
             
             <div data-guide="input-correo">
                 <Input
-                placeholder="Correo"
+                placeholder={errores.correo || errores.correoFormato || errores.correoNoValido ? "⚠️ Correo no válido" : "Correo"}
                 type="email"
                 disabled={!!editando}
-                className={errorClass('correo', 'correoFormato', 'correoProveedor', 'correoNoValido')}
+                className={errorClass('correo') || errorClass('correoFormato') || errorClass('correoProveedor') || errorClass('correoNoValido')}
                 value={form.correo}
                 onChange={(e) => {
                     setForm({ ...form, correo: e.target.value.trim() });
                     if (errores.correo || errores.correoFormato || errores.correoProveedor || errores.correoNoValido) {
-                    setErrores((prev) => ({
+                      setErrores((prev) => ({
                         ...prev,
                         correo: false,
                         correoFormato: false,
                         correoProveedor: false,
                         correoNoValido: false
-                    }));
+                      }));
                     }
                 }}
                 />
@@ -798,7 +820,7 @@ const guardar = async () => {
             {/* --- SE ENVUELVE EL INPUT DE TELÉFONO PARA LA GUÍA --- */}
             <div data-guide="input-telefono">
                 <Input
-                placeholder="Teléfono (10 dígitos)"
+                placeholder={errores.telefono ? "⚠️ 10 dígitos" : "Teléfono (10 dígitos)"}
                 inputMode="numeric"
                 maxLength={10}
                 value={form.telefono}
@@ -823,11 +845,15 @@ const guardar = async () => {
             </div>
 
             <div data-guide="select-perfil">
-                <select className={`border rounded px-3 py-2 w-full ${errores.perfil ? 'border-red-500' : ''}`}
+                <select 
+                className={`border rounded px-3 py-2 w-full transition-all ${errores.perfil ? 'border-red-600 border-2 shadow-sm bg-red-50' : 'border-gray-200'}`}
                 value={form.perfil}
                 disabled={editando !== null && form.perfil === "Administrador"}
-                onChange={(e) => setForm({ ...form, perfil: e.target.value })}>
-                <option value="">Selecciona un perfil</option>
+                onChange={(e) => {
+                  setForm({ ...form, perfil: e.target.value });
+                  if(errores.perfil) setErrores(prev => ({...prev, perfil: false}));
+                }}>
+                <option value="">{errores.perfil ? "⚠️ SELECCIONA PERFIL" : "Selecciona un perfil"}</option>
                 {(editando === null || form.perfil === "Administrador") && (
                     <option value="Administrador">Administrador</option>
                 )}
@@ -838,12 +864,15 @@ const guardar = async () => {
 
             <div data-guide="input-password">
                 <Input
-                placeholder="Contraseña"
+                placeholder={errores.password ? "⚠️ Campo vacío" : "Contraseña"}
                 type="password"
-                className={errores.password ? 'border-red-500' : ''}
+                className={errorClass('password')}
                 required={!editando}
                 value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, password: e.target.value });
+                  if(errores.password) setErrores(prev => ({...prev, password: false}));
+                }}
                 />
             </div>
           </div>

@@ -975,9 +975,13 @@ export const getSucursalFile = async (req: Request, res: Response) => {
 
 export const getPresignedUploadUrlImgForNewJiraTasks = async (req: Request, res: Response) => {
   try {
-    const { fileType } = req.body;
+    const { fileType, fileName: originalName } = req.body; 
 
-    const fileName = `jira/tareas/${uuidv4()}`;
+    // Extraemos la extensión (ej. ".pdf", ".mp4", ".docx")
+    const ext = originalName ? path.extname(originalName) : '';
+    
+    // Generamos el nombre con su extensión
+    const fileName = `jira/tareas/${uuidv4()}${ext}`;
     const bucket = BUCKET;
     const awsRegion = AWS_REGION;
 
@@ -985,20 +989,15 @@ export const getPresignedUploadUrlImgForNewJiraTasks = async (req: Request, res:
       Bucket: bucket,
       Key: fileName,
       ContentType: fileType,
-      ACL: 'public-read', // Descomenta si el bucket no es público por política y necesitas ACL
+      ACL: 'public-read',
+      // Recomendado: forzar descarga en archivos que no sean imágenes/video
+      // ContentDisposition: 'attachment' 
     });
 
-    const uploadUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: 60, // 1 minuto
-    });
-
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 }); 
     const publicUrl = `https://${bucket}.s3.${awsRegion}.amazonaws.com/${fileName}`;
 
-    res.json({
-      uploadUrl,
-      publicUrl,
-    });
-
+    res.json({ uploadUrl, publicUrl });
   } catch (err) {
     res.status(500).json({ message: "Error generando URL firmada" });
   }

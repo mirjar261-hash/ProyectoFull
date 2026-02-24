@@ -125,7 +125,7 @@ export default function CrovDesktopPage() {
             </div>
             <div className="flex items-center gap-3 text-sm">
               <Link
-              href="https://drive.google.com/uc?export=download&id=1IDhTiXeP6XZfeXEa0u_EJxOjJEtEy2cn"
+              href="https://drive.google.com/file/d/1Jissk_c53r5g6fWPY2C_fOWjP7ZUOMcK/view?usp=drive_link"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-orange-500 to-orange-600 px-7 py-3 text-base font-bold text-white shadow-lg shadow-orange-200 transition hover:shadow-orange-300"

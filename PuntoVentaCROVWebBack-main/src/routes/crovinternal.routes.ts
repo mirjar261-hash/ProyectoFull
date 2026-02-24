@@ -53,6 +53,8 @@ import {
   actualizarTareaCROV,
   eliminarTareaCROV,
   optenertareassprintactual,
+  obtenerReportePuntosListoPorSprintCROV,
+  obtenerComparativaPuntosListoUltimos4SprintsCROV,
   getHistorialAhorrosEmpleados,
   getAhorroEmpleado,
   crearAhorroEmpleado,
@@ -69,6 +71,9 @@ import {
   getSolicitudesIncidenciaPorEmpleado,
   eliminarSolicitudIncidencia,
   actualizarSolicitudIncidencia,
+  getSolicitudesIncidenciaPendientes,
+  aprobarRechazarSolicitudIncidencia,
+  getCumpleaniosEmpleados,
 } from '../controllers/crovinternal.controller';
 import {
   obtenerTodosPermisosInternal,
@@ -118,6 +123,8 @@ router.post('/empleados-crov', verifyToken, crearEmpleadoCROV);
 router.put('/empleados-crov/:id', verifyToken, actualizarEmpleadoCROV);
 router.delete('/empleados-crov/:id', verifyToken, eliminarEmpleadoCROV);
 
+router.get('/cumpleanios-empleados/todos', verifyToken, getCumpleaniosEmpleados);
+
 router.get('/tickets-soporte-crov', verifyToken, listarTicketsSoporteCROV);
 router.get('/tickets-soporte-crov/:id', verifyToken, obtenerTicketSoporteCROV);
 router.post('/tickets-soporte-crov', verifyToken, crearTicketSoporteCROV);
@@ -140,6 +147,8 @@ router.delete('/sprints-crov/:id', verifyToken, eliminarSprintCROV);
 
 router.get('/tareas-crov', verifyToken, listarTareasCROV);
 router.get('/tareas-crov-obtener-tareas-sprint-actual', verifyToken, optenertareassprintactual);
+router.get('/jira/reportes/sprints/:idSprint/puntos-listo-por-empleado', verifyToken, obtenerReportePuntosListoPorSprintCROV);
+router.get('/jira/reportes/puntos-listo-comparativa-ultimos-4-sprints', verifyToken, obtenerComparativaPuntosListoUltimos4SprintsCROV);
 router.get('/tareas-crov/:id', verifyToken, obtenerTareaCROV);
 router.post('/tareas-crov', verifyToken, crearTareaCROV);
 router.put('/tareas-crov/:id', verifyToken, actualizarTareaCROV);
@@ -161,8 +170,10 @@ router.post('/historial-ahorros/:id/retirar-ahorro', verifyToken, retirarAhorroE
 router.get('/tipos-incidencia', verifyToken, getTiposIncidencias);
 
 router.get('/solicitudes-incidencia/empleado/:idEmpleado', verifyToken, getSolicitudesIncidenciaPorEmpleado);
+router.get('/solicitudes-incidencia', verifyToken, getSolicitudesIncidenciaPendientes);
 router.post('/solicitudes-incidencia', verifyToken, crearSolicitudIncidencia);
 router.put('/solicitudes-incidencia/:idSolicitud', verifyToken, actualizarSolicitudIncidencia);
+router.patch('/solicitudes-incidencia/:idSolicitud/estado', verifyToken, aprobarRechazarSolicitudIncidencia);
 router.delete('/solicitudes-incidencia/:idSolicitud', verifyToken, eliminarSolicitudIncidencia);
 
 

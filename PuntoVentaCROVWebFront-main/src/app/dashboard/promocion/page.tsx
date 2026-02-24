@@ -166,14 +166,13 @@ export default function PromocionPage() {
             headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
-        // Ajusta esto según la estructura real de tu respuesta (data.productos o data array directo)
         const lista = data.productos || (Array.isArray(data) ? data : []);
         const empty = lista.length === 0;
         setIsInventoryEmpty(empty);
         return empty;
     } catch (error) {
         console.error("Error verificando inventario", error);
-        return true; // Asumimos vacío si falla para prevenir errores
+        return true;
     }
   };
 
@@ -192,17 +191,14 @@ export default function PromocionPage() {
 
   // --- AUTO INICIO GUÍA ---
   useEffect(() => {
-    // 1. Verificamos inventario primero
     checkInventory().then((isEmpty) => {
         const key = 'hasSeenPromocionesGuide';
         if (!localStorage.getItem(key)) {
             const timer = setTimeout(() => {
                 if (isEmpty) {
-                    // Si está vacío, mostramos el flujo de error
                     setCurrentSteps(GUIDE_FLOW_NO_PRODUCTS);
                     setGuideActive(true);
                 } else {
-                    // Si hay productos, iniciamos el flujo normal de creación
                     startGuide('CREATE');
                 }
                 localStorage.setItem(key, 'true');
@@ -412,7 +408,6 @@ export default function PromocionPage() {
       {/* --- GUÍA INTERACTIVA --- */}
       {guideActive && currentSteps.length > 0 && (
         <>
-          {/* CORRECCIÓN: La flecha se oculta si hay un modal de búsqueda abierto */}
           {!searchOpen && !filterSearchOpen && (
               <GuideArrowOverlay 
                 activeKey={currentSteps[currentStepIndex].targetKey} 
@@ -476,7 +471,7 @@ export default function PromocionPage() {
           <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => window.open('http://localhost:3000/dashboard/promocion', '_blank')}
+              onClick={() => window.open('https://www.youtube.com/watch?v=Atn-lBdFBR0&list=PLQiB7q2hSscFQdcSdoDEs0xFSdPZjBIT-&index=11')}
           >
               <PlayCircle className="w-4 h-4 mr-2" /> Tutorial Rápido
           </Button>
@@ -557,20 +552,32 @@ export default function PromocionPage() {
 
         {/* COLUMNA DERECHA: FILTROS Y TABLA */}
         <div className="space-y-4">
-          <div className="space-y-2" data-guide="filter-section">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Input
-                type="date"
-                value={filtro.inicio}
-                onChange={(e) => setFiltro({ ...filtro, inicio: e.target.value })}
-              />
-              <Input
-                type="date"
-                value={filtro.fin}
-                onChange={(e) => setFiltro({ ...filtro, fin: e.target.value })}
-              />
+          <div className="space-y-2 p-4 bg-gray-50 rounded-lg border" data-guide="filter-section">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wider">Fecha Inicio</label>
+                <Input
+                  type="date"
+                  value={filtro.inicio}
+                  onChange={(e) => setFiltro({ ...filtro, inicio: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wider">Fecha Fin</label>
+                <Input
+                  type="date"
+                  value={filtro.fin}
+                  onChange={(e) => setFiltro({ ...filtro, fin: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
+            
+            {/* Leyenda de búsqueda */}
+            <p className="text-[11px] text-gray-500 italic px-1">
+              Ingrese el rango de fechas para consultar promociones activas.
+            </p>
+
+            <div className="flex gap-2 pt-2">
               <Input
                 value={filtro.productoNombre}
                 readOnly
@@ -583,9 +590,12 @@ export default function PromocionPage() {
               >
                 Producto
               </Button>
-              <Button onClick={cargarPromociones}>Buscar</Button>
+              <Button onClick={cargarPromociones} className="bg-orange-500 hover:bg-orange-600">
+                <Search size={16} className="mr-1" /> Buscar
+              </Button>
             </div>
           </div>
+
           <div className="border rounded-md overflow-auto" data-guide="table-results">
             <Table>
               <TableHeader>
@@ -618,7 +628,7 @@ export default function PromocionPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-4">
-                      Sin resultados
+                      Sin resultados en este rango de fechas.
                     </TableCell>
                   </TableRow>
                 )}

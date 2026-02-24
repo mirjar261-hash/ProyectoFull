@@ -151,7 +151,7 @@ export default function DashboardTotals() {
         const tomorrow = new Date(startOfTodayLocal.getTime() + 24 * 60 * 60 * 1000)
         const endDateParam = formatLocalDay(tomorrow)
 
-         const [ventasRes, comprasRes, gastosRes, productosRes, retirosRes, kpisDiaRes] = await Promise.all([
+        const [ventasRes, comprasRes, gastosRes, productosRes, retirosRes, kpisDiaRes, metasIARes] = await Promise.all([
           axios.get(
             `${apiUrl}/venta?sucursalId=${sucursalId}&fechaInicio=${encodeURIComponent(startOfRangeLocalISO)}&fechaFin=${encodeURIComponent(endOfTodayLocalISO)}`,
             { headers }
@@ -180,7 +180,14 @@ export default function DashboardTotals() {
               console.error(err)
               return { data: null }
             }),
+          // Llama al servicio de metas del gerente para obtener la meta diaria inteligente
+          axios.get(`${apiUrl}/gerente/metas?sucursalId=${sucursalId}`, { headers })
+            .catch((err) => {
+              console.error(err)
+              return { data: null }
+            })
         ])
+
         const ventasData = coerceArray(ventasRes.data, ['ventas', 'data', 'items'])
         const ventasHoy = ventasData.filter((venta: any) =>
           isToday(pickDate(venta, ['fecha', 'fecha_venta', 'fechaVenta', 'created_at', 'createdAt']))
@@ -200,7 +207,7 @@ export default function DashboardTotals() {
           )
           .reduce((sum: number, venta: any) => sum + asNumber(venta.total), 0)
 
-           const ventasPorDia = new Map<string, number>()
+        const ventasPorDia = new Map<string, number>()
         const devolucionesPorDia = new Map<string, number>()
 
         ventasData.forEach((venta: any) => {
@@ -239,7 +246,6 @@ export default function DashboardTotals() {
           }
         })
 
-        
         const comprasData = coerceArray(comprasRes.data, ['compras', 'data', 'items'])
         const comprasTotal = comprasData
           .filter((compra: any) =>
@@ -247,28 +253,27 @@ export default function DashboardTotals() {
           )
           .reduce((sum: number, compra: any) => sum + asNumber(compra.total), 0)
 
-        
-       const gastosData = coerceArray(gastosRes.data, ['gastos', 'data', 'items'])
+        const gastosData = coerceArray(gastosRes.data, ['gastos', 'data', 'items'])
         const gastosTotal = gastosData
           .filter((gasto: any) =>
             isToday(pickDate(gasto, ['fecha', 'fecha_gasto', 'fechaGasto', 'created_at', 'createdAt']))
           )
           .reduce((sum: number, gasto: any) => sum + asNumber(gasto.monto), 0)
-const retirosData = coerceArray(retirosRes.data, ['retiros', 'data', 'items'])
+
+        const retirosData = coerceArray(retirosRes.data, ['retiros', 'data', 'items'])
         const retirosTotal = retirosData
           .filter((retiro: any) =>
             isToday(pickDate(retiro, ['fecha', 'fecha_retiro', 'fechaRetiro', 'created_at', 'createdAt']))
           )
           .reduce((sum: number, retiro: any) => sum + asNumber(retiro.monto), 0)
 
-        
-         const agotadosTotal = (productosRes.data?.productos || []).filter((p: any) => {
+        const agotadosTotal = (productosRes.data?.productos || []).filter((p: any) => {
           const isServicio = Number(p?.servicio ?? 0) === 1
           return !isServicio && p.cantidad_existencia <= 0
         }).length
 
         const ventasNetas = ventasTotal - devolucionesTotal
-         const utilidadNeta = ventasNetas - gastosTotal
+        const utilidadNeta = ventasNetas - gastosTotal
 
         const kpisDiaData = kpisDiaRes?.data || {}
         const totalEfectivo = asNumber(kpisDiaData.totalEfectivo)
@@ -278,11 +283,16 @@ const retirosData = coerceArray(retirosRes.data, ['retiros', 'data', 'items'])
         const totalBancos = totalTransferencia + totalTarjeta + totalCheque
         const flujoCaja = totalEfectivo + totalBancos
 
-        // Usa el mejor día registrado como referencia y proyecta la meta
-        const META_GROWTH_FACTOR = 1.1
-        const metaDesdeApi = asNumber(kpisDiaData.metaDiaria)
-        const metaCalculada = mayorVentaDiaria > 0 ? mayorVentaDiaria * META_GROWTH_FACTOR : ventasNetas
-        const metaDiaria = metaDesdeApi > 0 ? metaDesdeApi : metaCalculada
+        // --- LÓGICA DE METAS MEJORADA (Mapeo de respuesta metas.service) ---
+        const metaIA = asNumber(metasIARes?.data?.data?.metas?.metaDiaria) 
+        const metaDesdeKpis = asNumber(kpisDiaData.metaDiaria) 
+        const metaCalculadaBackup = mayorVentaDiaria > 0 ? mayorVentaDiaria * 1.1 : ventasNetas
+
+        // Prioridad: 1. Manual desde KPIs, 2. Calculada por metas.service.ts, 3. Backup histórico de 14 días
+        const metaDiaria = metaDesdeKpis > 0 
+          ? metaDesdeKpis 
+          : (metaIA > 0 ? metaIA : metaCalculadaBackup)
+
         const cumplimiento = metaDiaria > 0 ? Math.max(0, Math.min((ventasNetas / metaDiaria) * 100, 999)) : 0
 
         setTotals({
@@ -307,7 +317,6 @@ const retirosData = coerceArray(retirosRes.data, ['retiros', 'data', 'items'])
     fetchData()
    }, [apiUrl, sucursalId, token])
 
-
   const formatCurrency = (value: number) =>
     value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
 
@@ -321,7 +330,6 @@ const retirosData = coerceArray(retirosRes.data, ['retiros', 'data', 'items'])
   const totalMovimientos = totals.ventas + totals.gastos
   const ingresosPct = totalMovimientos > 0 ? Math.min(100, (totals.ventas / totalMovimientos) * 100) : 0
   const barraColor = totals.utilidadNeta >= 0 ? 'bg-emerald-500' : 'bg-red-500'
-
 
   return (
      <div className="space-y-6">
@@ -400,7 +408,7 @@ const retirosData = coerceArray(retirosRes.data, ['retiros', 'data', 'items'])
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
               <p>
-                Meta: <span className="font-semibold text-slate-900">{formatCurrency(totals.metaDiaria)}</span>
+                Meta IA: <span className="font-semibold text-slate-900">{formatCurrency(totals.metaDiaria)}</span>
               </p>
               <p>
                 Avance: <span className="font-semibold text-slate-900">{formatCurrency(totals.ventas)}</span>

@@ -1,0 +1,40 @@
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror:focus,
+.ProseMirror:focus-visible {
+  outline: none;
+}
+
+/* Estilos base para los enlaces normales (como google.com) */
+.prose-mirror-content a {
+    color: #2563eb; 
+    text-decoration: underline;
+    font-weight: 500; 
+    transition: color 0.15s ease-in-out;
+    cursor: pointer;
+}
+
+.prose-mirror-content a:hover {
+    color: #1e40af; 
+}
+
+/* Estilos para los archivos adjuntos  */
+.prose-mirror-content a.file-attachment-link {
+    display: inline-flex; 
+    align-items: center; 
+    gap: 0.25rem; 
+    margin-left: 0.25rem; 
+    margin-right: 0.25rem; 
+    padding: 0.125rem 0.375rem; 
+    background-color: #eff6ff; 
+    border: 1px solid #bfdbfe; 
+    border-radius: 0.25rem; 
+    text-decoration: none; 
+}
+
+.prose-mirror-content a.file-attachment-link:hover {
+     background-color: #dbeafe; 
+     text-decoration: underline;
+}

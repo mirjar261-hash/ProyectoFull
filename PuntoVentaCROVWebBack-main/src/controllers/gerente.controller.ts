@@ -3,6 +3,19 @@ import { serializeBigInt } from '../utils/serializeBigInt';
 import { fetchWithRetry } from '../utils/fetchWithRetry';
 import prisma from '../utils/prisma';
 
+// ==========================================
+// IMPORTACIÓN DE SERVICIOS
+// ==========================================
+
+import { 
+  obtenerDashboardGerenteMetas,
+  obtenerProductosBajaRotacionService,
+  obtenerImpactoDevolucionesService,
+  obtenerTopProductosUltimoMesService,
+  obtenerTopClientesUltimoMesService,
+  validarSucursalId
+ } from '../services/metas.service';
+//
 import { 
   procesarVentaIA, 
   procesarCompraIA, 
@@ -46,7 +59,8 @@ import {
   obtenerCreditosPendientesIA,
   obtenerSaldosPorClienteIA,
   registrarAbonoIA,
-  consultarHistorialAbonosIA
+  consultarHistorialAbonosIA,
+  obtenerCajerosPendientesIA
 } from '../services/caja.service';
 
 import {
@@ -59,6 +73,9 @@ import {
     obtenerListaClientesGeneralIA
 } from '../services/reportes.service';
 
+// ==========================================
+// CONFIGURACIÓN PRISMA & UTILS
+// ==========================================
 let prismaModels: { name: string; fields: string[] }[] = [];
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -234,6 +251,10 @@ const toNumber = (value: unknown): number => {
   return 0;
 };
 
+// ==========================================
+// CÁLCULO DE KPIS
+// ==========================================
+
 const obtenerMetaDiariaHistorica = async (sucursalId: number): Promise<number> => {
   const resultado = await prisma.$queryRaw<Array<{ meta: unknown }>>`
     SELECT COALESCE(MAX(total_por_dia), 0) AS meta
@@ -399,6 +420,10 @@ export const obtenerKpisMes = async (req: Request, res: Response) => {
   res.json(serializeBigInt(kpis));
 };
 
+// ==========================================
+// GRAFICOS Y PREDICCIONES
+// ==========================================
+
 export const obtenerVentasDevueltas7Dias = async (req: Request, res: Response) => {
   const sucursalId = Number(req.query.sucursalId);
   if (!sucursalId || isNaN(sucursalId)) { res.status(400).json({ error: 'sucursalId requerido' }); return; }
@@ -486,22 +511,21 @@ export const prediccionGastos = async (req: Request, res: Response) => {
 };
 
 export const topProductosUltimoMes = async (req: Request, res: Response) => {
-  const sucursalId = Number(req.query.sucursalId);
-  if (!sucursalId || isNaN(sucursalId)) { res.status(400).json({ error: 'sucursalId requerido' }); return; }
-  const start = startOfLastMonth();
-  const ventas = await prisma.detalle_venta.groupBy({ by: ['id_producto'], _sum: { cantidad: true }, where: { venta: { sucursalId, fecha: { gte: start }, activo: 1 }, activo: 1 }, orderBy: { _sum: { cantidad: 'desc' } }, take: 10 });
-  const productos = await prisma.producto.findMany({ where: { id: { in: ventas.map((v) => v.id_producto) } }, select: { id: true, nombre: true } });
-  const resultado = ventas.map((v) => { const prod = productos.find((p) => p.id === v.id_producto); return { productoId: v.id_producto, nombre: prod?.nombre ?? '', cantidadVendida: v._sum.cantidad ?? 0 }; });
+  const sucursalId = validarSucursalId(req.query.sucursalId || req.params.sucursalId || (req as any).user?.sucursalId);
+  if (!sucursalId) { res.status(400).json({ error: 'sucursalId requerido' }); return; }
+  const resultado = await obtenerTopProductosUltimoMesService(sucursalId);
   res.json(serializeBigInt(resultado));
 };
 
 export const topClientesUltimoMes = async (req: Request, res: Response) => {
-  const sucursalId = Number(req.query.sucursalId);
-  if (!sucursalId || isNaN(sucursalId)) { res.status(400).json({ error: 'sucursalId requerido' }); return; }
-  const start = startOfLastMonth();
-  const ventas = await prisma.venta.groupBy({ by: ['id_cliente'], _sum: { total: true }, where: { sucursalId, fecha: { gte: start }, activo: 1, id_cliente: { not: null } }, orderBy: { _sum: { total: 'desc' } }, take: 5 });
-  const clientes = await prisma.cliente.findMany({ where: { id: { in: ventas.map((v) => v.id_cliente as number) } }, select: { id: true, razon_social: true } });
-  const resultado = ventas.map((v) => { const cliente = clientes.find((c) => c.id === v.id_cliente); return { clienteId: v.id_cliente, nombre: cliente?.razon_social ?? '', totalVendido: v._sum.total ?? 0 }; });
+  const sucursalId = validarSucursalId(req.query.sucursalId || req.params.sucursalId || (req as any).user?.sucursalId);
+  if (!sucursalId) { res.status(400).json({ error: 'sucursalId requerido' }); return; }
+
+  const periodoRaw = String(req.query.periodo || 'historico').toLowerCase();
+  const periodo: 'historico' | '1m' | '2m' =
+    periodoRaw === '1m' || periodoRaw === '2m' ? periodoRaw : 'historico';
+
+  const resultado = await obtenerTopClientesUltimoMesService(sucursalId, periodo);
   res.json(serializeBigInt(resultado));
 };
 
@@ -536,6 +560,10 @@ export const comparativaUtilidadUltimoMes = async (req: Request, res: Response) 
   res.json(resultado);
 };
 
+// ==========================================
+// CEREBRO PRINCIPAL: CHAT SQL + TOOLS
+// ==========================================
+
 export const consultaSql = async (req: Request, res: Response) => {
   const { message, history, timezone, timezoneOffsetMinutes, timezoneOffset } = req.body ?? {};
 
@@ -555,7 +583,11 @@ export const consultaSql = async (req: Request, res: Response) => {
       function: {
         name: "listar_cajeros",
         description: "Muestra la lista de usuarios con perfil 'CAJA' activos.",
-        parameters: { type: "object", properties: {}, required: [] }
+        parameters: { 
+            type: "object", 
+            properties: {}, 
+            required: [] 
+        }
       }
     },
     {
@@ -563,7 +595,11 @@ export const consultaSql = async (req: Request, res: Response) => {
         function: {
             name: "obtener_top_clientes",
             description: "Obtiene el ranking de los mejores clientes. Úsala para 'mejor cliente', 'quien compra mas'.",
-            parameters: { type: "object", properties: {}, required: [] }
+            parameters: { 
+                type: "object", 
+                properties: {}, 
+                required: [] 
+            }
         }
     },
     {
@@ -571,7 +607,11 @@ export const consultaSql = async (req: Request, res: Response) => {
         function: {
             name: "obtener_top_proveedores",
             description: "Ranking de proveedores por volumen de compra. Úsala para 'mejor proveedor', 'a quien compro mas'.",
-            parameters: { type: "object", properties: {}, required: [] }
+            parameters: { 
+                type: "object", 
+                properties: {}, 
+                required: [] 
+            }
         }
     },
     {
@@ -579,7 +619,11 @@ export const consultaSql = async (req: Request, res: Response) => {
         function: {
             name: "listar_proveedores",
             description: "Muestra lista general alfabética de proveedores (teléfonos y contactos). Úsala para 'ver lista de proveedores', 'mis proveedores'. NO para ranking.",
-            parameters: { type: "object", properties: {}, required: [] }
+            parameters: { 
+                type: "object", 
+                properties: {}, 
+                required: [] 
+            }
         }
     },
     {
@@ -587,7 +631,11 @@ export const consultaSql = async (req: Request, res: Response) => {
         function: {
             name: "listar_clientes",
             description: "Muestra lista general alfabética de clientes. Úsala para 'ver lista de clientes', 'mis clientes'. NO para ranking.",
-            parameters: { type: "object", properties: {}, required: [] }
+            parameters: { 
+                type: "object", 
+                properties: {}, 
+                required: [] 
+            }
         }
     },
     {
@@ -595,7 +643,11 @@ export const consultaSql = async (req: Request, res: Response) => {
         function: {
             name: "obtener_top_cajeros",
             description: "Ranking de desempeño de cajeros. Úsala para 'mejor cajero'.",
-            parameters: { type: "object", properties: {}, required: [] }
+            parameters: { 
+                type: "object", 
+                properties: {}, 
+                required: [] 
+            }
         }
     },
     {
@@ -745,7 +797,11 @@ export const consultaSql = async (req: Request, res: Response) => {
       function: {
         name: "ver_clientes_deudores",
         description: "Resumen de clientes con deuda.",
-        parameters: { type: "object", properties: {}, required: [] }
+        parameters: { 
+            type: "object", 
+            properties: {}, 
+            required: [] 
+        }
       }
     },
     {
@@ -782,12 +838,24 @@ export const consultaSql = async (req: Request, res: Response) => {
     {
       type: "function",
       function: {
+        name: "ver_pendientes_corte",
+        description: "Muestra la lista de cajeros que han vendido hoy pero NO han hecho corte. Úsala para 'pre-corte' o 'quien falta'.",
+        parameters: { 
+            type: "object", 
+            properties: {}, 
+            required: [] 
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "consultar_pre_corte",
-      description: "PASO 1 DEL CORTE: Revisa pendientes.",
+        description: "Muestra los números del pre-corte de un usuario ESPECÍFICO. Pide ID o Nombre.",
         parameters: {
           type: "object",
           properties: {
-            usuarioObjetivoId: { type: "string" }
+            usuarioObjetivoId: { type: "string", description: "ID del usuario." }
           },
           required: ["usuarioObjetivoId"]
         }
@@ -797,12 +865,12 @@ export const consultaSql = async (req: Request, res: Response) => {
       type: "function",
       function: {
     name: "realizar_corte_caja",
-        description: "PASO 2 DEL CORTE: Guarda el corte definitivo.",
+        description: "Ejecuta el corte. NO PEDIR MONTO MANUAL al usuario a menos que él lo especifique explícitamente. Por defecto usa el calculado.",
         parameters: {
           type: "object",
           properties: {
             usuarioObjetivoId: { type: "string" },
-            montoManual: { type: "number" }
+            montoManual: { type: "number", description: "Solo usar si el usuario quiere sobreescribir el monto del sistema." }
           },
           required: ["usuarioObjetivoId"]
         }
@@ -1051,9 +1119,20 @@ export const consultaSql = async (req: Request, res: Response) => {
             ACTITUD: Leal, trabajador y respetuoso ("Jefe"). Habla natural.
 
             REGLAS CRÍTICAS DE NEGOCIO:
-            1. **CXC:** Para deudas usa 'ver_clientes_deudores' o 'ver_creditos_pendientes'.
-            2. **FONDO DE CAJA:** Ejecuta 'listar_cajeros' si no dicen nombre.
-            3. **ABONOS:** Asume EFECTIVO si no especifican.
+            1. **CXC vs CAJA:**
+               - **FONDO:** Dinero que se da a un **CAJERO (Empleado)**. Usa 'registrar_fondo_caja'.
+               - **PAGO/ABONO:** Dinero que entra de un **CLIENTE (Deuda)**. 
+               - **REGLA DE ORO:** Si dicen "Pago de [Nombre]" o "Abono de [Nombre]", **NUNCA** uses 'registrar_fondo_caja'. Usa 'ver_creditos_pendientes' para ver qué debe el cliente.
+
+            2. **CORTES:**
+               - 'Pre-corte' o 'Quien falta': Usa 'ver_pendientes_corte'.
+               - 'Corte definitivo': **NUNCA preguntes el monto manual**. Si el usuario no dio monto, asume el del sistema (null).
+               - **FLUJO:** 1. Identifica usuario (o usa pendientes). 2. Muestra monto calculado. 3. Pregunta confirmación (Sí/No). 4. Si dicen Sí, ejecuta 'realizar_corte_caja'.
+
+            3. **DINERO SIN CANTIDAD:**
+               - Si dicen "Registra inversión", "Registra gasto", etc. y **NO DAN CANTIDAD**, **NO LLAMES A LA HERRAMIENTA**. Pregunta primero la cantidad.
+               - PROHIBIDO inventar montos.
+
             4. **REPORTES:** Pregunta detalles antes de guardar.
             5. **HISTORIAL:** Sin fechas muestra 2 meses.
             6. **DEVOLUCIONES DE COMPRA (PROVEEDORES):**
@@ -1093,10 +1172,49 @@ export const consultaSql = async (req: Request, res: Response) => {
         actionResult = await procesarVentaIA(sucursalId, args.nombreCliente, args.productos, args.usuarioVendedorId ? Number(args.usuarioVendedorId) : undefined);
       } else if (fnName === 'registrar_compra') {
         actionResult = await procesarCompraIA(sucursalId, args.nombreProveedor, args.productos);
+      } else if (fnName === 'ver_pendientes_corte') {
+        actionResult = await obtenerCajerosPendientesIA(sucursalId);
       } else if (fnName === 'consultar_pre_corte') {
-        actionResult = await simularCorteDiaIA(sucursalId, args.usuarioObjetivoId === 'TODOS' ? 'TODOS' : Number(args.usuarioObjetivoId));
+        if (!args.usuarioObjetivoId || args.usuarioObjetivoId === 'TODOS') {
+             actionResult = await obtenerCajerosPendientesIA(sucursalId);
+        } else {
+             actionResult = await simularCorteDiaIA(sucursalId, args.usuarioObjetivoId);
+        }
       } else if (fnName === 'realizar_corte_caja') {
-        actionResult = await realizarCorteDiaIA(sucursalId, Number(req.body.usuarioSolicitanteId || 1), args.usuarioObjetivoId === 'TODOS' ? 'TODOS' : Number(args.usuarioObjetivoId), args.montoManual);
+        // 🔥 MEJORA CRÍTICA: RESOLUCIÓN DE NOMBRES PARA CORTE 🔥
+        let idObjetivo: number | 'TODOS' = 'TODOS';
+        const input = args.usuarioObjetivoId;
+
+        if (input !== 'TODOS') {
+            if (!isNaN(Number(input))) {
+                idObjetivo = Number(input);
+            } else {
+                // BUSCAR POR NOMBRE COMPLETO EN MEMORIA (ROBUSTO)
+                const termino = String(input).trim().toLowerCase();
+                const usuarios = await prisma.usuario.findMany({
+                    where: { sucursalId: Number(sucursalId), activo: 1 },
+                    select: { id: true, nombre: true, apellidos: true }
+                });
+
+                const encontrado = usuarios.find(u => {
+                    const nombreCompleto = `${u.nombre} ${u.apellidos || ''}`.toLowerCase();
+                    return nombreCompleto.includes(termino);
+                });
+
+                if (!encontrado) {
+                    res.json({ answer: ensureJefe(`No encontré a nadie con el nombre "${input}" para hacerle el corte.`) });
+                    return;
+                }
+                idObjetivo = encontrado.id;
+            }
+        }
+
+        actionResult = await realizarCorteDiaIA(
+            sucursalId,
+            Number(req.body.usuarioSolicitanteId || 1),
+            idObjetivo,
+            args.montoManual
+        );
       } else if (fnName === 'registrar_devolucion') {
         actionResult = await procesarDevolucionIA(sucursalId, args.folio, args.tipo, args.modo, args.productos || []);
       } else if (fnName === 'registrar_producto_nuevo') {
@@ -1316,6 +1434,10 @@ function ensureJefe(texto: string) {
   return t + ' jefe';
 }
 
+// =================================================================
+// ENDPOINTS PARA USO DIRECTO
+// =================================================================
+
 export const ejecutarVentaIA = async (req: Request, res: Response) => {
   const { sucursalId, cliente, productos, usuarioVendedorId } = req.body;
   if (!sucursalId || !cliente || !productos || !Array.isArray(productos)) {
@@ -1443,4 +1565,128 @@ export const ejecutarInversionIA = async (req: Request, res: Response) => {
   const resultado = await registrarInversionIA(Number(sucursalId), Number(monto), descripcion, 
   Number(usuarioInversionistaId));
   resultado.error ? res.status(400).json(resultado) : res.json(resultado);
+};
+export const obtenerComparativaDiaria = async (req: Request, res: Response) => {
+  const sucursalId = Number(req.query.sucursalId);
+  const fechaInicioActual = String(req.query.fechaInicioActual);
+  const fechaFinActual = String(req.query.fechaFinActual);
+  const fechaInicioAnterior = String(req.query.fechaInicioAnterior);
+  const fechaFinAnterior = String(req.query.fechaFinAnterior);
+
+  if (!sucursalId || !fechaInicioActual.includes('T')) {
+    res.status(400).json({ error: 'Parámetros incorrectos' });
+    return;
+  }
+
+  try {
+    // 1. Agrupar por FECHA COMPLETA (Año-Mes-Día) para no mezclar meses
+    const queryVentas = async (inicio: string, fin: string) => {
+      // Usamos DATE_FORMAT para agrupar por día exacto
+      return await prisma.$queryRawUnsafe(`
+        SELECT DATE_FORMAT(fecha, '%Y-%m-%d') as fechaFull, SUM(total) as total 
+        FROM Venta 
+        WHERE sucursalId = ${sucursalId} 
+        AND activo = 1 
+        AND estado != 'COTIZACION'
+        AND fecha >= '${inicio}' AND fecha <= '${fin}'
+        GROUP BY DATE_FORMAT(fecha, '%Y-%m-%d')
+        ORDER BY fechaFull ASC
+      `);
+    };
+
+    const [actuales, anteriores] = await Promise.all([
+      queryVentas(fechaInicioActual, fechaFinActual),
+      queryVentas(fechaInicioAnterior, fechaFinAnterior)
+    ]);
+
+    // 2. Construir la línea de tiempo día por día
+    const start = new Date(fechaInicioActual);
+    const end = new Date(fechaFinActual);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    const data = [];
+    
+    for (let i = 0; i < diffDays; i++) {
+       const currentDayDate = new Date(start);
+        currentDayDate.setDate(start.getDate() + i);
+        const currentIsoDate = currentDayDate.toISOString().split('T')[0];
+
+        const ventaActual = (actuales as any[]).find((x: any) => x.fechaFull === currentIsoDate)?.total || 0;
+        const ventaAnterior = (anteriores as any[])[i]?.total || 0;
+
+        const day = currentDayDate.getUTCDate();
+        const month = currentDayDate.toLocaleDateString('es-MX', { month: 'short', timeZone: 'UTC' }).replace('.', ''); // Quitamos punto de abreviatura
+        const yearShort = currentDayDate.getUTCFullYear().toString().slice(-2); // Últimos 2 dígitos
+        
+        const labelFecha = `${day} ${month}/${yearShort}`; // Resultado: "10 dic/25"
+
+        data.push({
+            day: i + 1,
+            label: labelFecha, 
+            current: Number(ventaActual),
+            previous: Number(ventaAnterior)
+        });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error interno' });
+  }
+};
+//metas
+export const getGerenteDashboard = async (req: Request, res: Response) => {
+  try {
+    // Aseguramos la obtención del ID de sucursal
+    const sucursalId = validarSucursalId(req.query.sucursalId || req.params.sucursalId || (req as any).user?.sucursalId);
+
+    if (!sucursalId) {
+      return res.status(400).json({ success: false, message: 'Falta el ID de la sucursal' });
+    }
+
+    const dashboardData = await obtenerDashboardGerenteMetas(sucursalId);
+
+    return res.json(dashboardData);
+
+  } catch (error) {
+    console.error("Error en getGerenteDashboard:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Error al cargar el panel del gerente'
+    });
+  }
+};
+
+export const getProductosBajaRotacion = async (req: Request, res: Response) => {
+  try {
+    const sucursalId = validarSucursalId(req.query.sucursalId || req.params.sucursalId || (req as any).user?.sucursalId);
+
+    if (!sucursalId) {
+      return res.status(400).json({ success: false, message: 'El sucursalId es requerido' });
+    }
+
+    const result = await obtenerProductosBajaRotacionService(sucursalId);
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error("Error en getProductosBajaRotacion:", error);
+    return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
+};
+export const getImpactoDevoluciones = async (req: Request, res: Response) => {
+  try {
+    const sucursalId = validarSucursalId(req.query.sucursalId || req.params.sucursalId || (req as any).user?.sucursalId);
+
+    if (!sucursalId) {
+      return res.status(400).json({ success: false, message: 'El sucursalId es requerido' });
+    }
+
+    const result = await obtenerImpactoDevolucionesService(sucursalId);
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error("Error en getImpactoDevoluciones:", error);
+    return res.status(500).json({ success: false, message: 'Error interno al calcular el impacto de devoluciones' });
+  }
 };

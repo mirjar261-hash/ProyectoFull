@@ -907,6 +907,7 @@ interface EmpleadoCROV {
   montoAhorro: number | '';
   color_perfil: string;
   sistema_residencia: {id: number, nombre: string} | null;
+  dias_vacaciones: number
 }
 
 interface EmpleadoForm {
@@ -921,6 +922,7 @@ interface EmpleadoForm {
   proyectoResidencia: number | null;
   activo: number;
   montoAhorro: number | '';
+  dias_vacaciones: number;
 }
 
 const defaultEmpleadoForm: EmpleadoForm = {
@@ -935,6 +937,7 @@ const defaultEmpleadoForm: EmpleadoForm = {
   proyectoResidencia: null,
   activo: 1,
   montoAhorro: '',
+  dias_vacaciones: 0,
 };
 
 interface PermisoInternal {
@@ -1048,7 +1051,8 @@ const normalizeEmpleado = (raw: any): EmpleadoCROV => {
     estatus,
     activo,
     color_perfil: raw?.color_perfil ?? catalogoColoresPerfil[0],
-    sistema_residencia: raw.sistema_residencia
+    sistema_residencia: raw.sistema_residencia,
+    dias_vacaciones: raw?.dias_vacaciones ?? 0,
   };
 };
 
@@ -1087,6 +1091,7 @@ const mapEmpleadoFormToPayload = (
     residente: form.residente ? 1 : 0,
     idProyectoResidencia: form.proyectoResidencia, 
     montoAhorro: form.montoAhorro,
+    dias_vacaciones: form.dias_vacaciones,
   };
 
   return payload;
@@ -3892,6 +3897,7 @@ export function CrovModule({ mode = 'catalogs' }: { mode?: CrovModuleMode }) {
       proyectoResidencia: empleado.proyectoResidencia ?? null,
       activo: typeof empleado.activo === 'number' ? empleado.activo : 1,
       montoAhorro: empleado.montoAhorro ?? 0,
+      dias_vacaciones: empleado.dias_vacaciones ?? 0,
     });
     setEmpleadoDialogOpen(true);
   };
@@ -7753,8 +7759,15 @@ export function CrovModule({ mode = 'catalogs' }: { mode?: CrovModuleMode }) {
                     type="checkbox"
                     className="h-4 w-4"
                     checked={empleadoForm.residente}
-                    onChange={(event) =>
-                      updateEmpleadoFormField('residente', event.target.checked)
+                    onChange={(event) => {
+                        updateEmpleadoFormField('residente', event.target.checked);
+                        updateEmpleadoFormField('dias_vacaciones', 0);
+                        updateEmpleadoFormField(
+                                  'proyectoResidencia',
+                                  null
+                                );
+                        updateEmpleadoFormField('montoAhorro', 0);
+                      }
                     }
                     disabled={sistemas.length === 0}
                   />
@@ -7920,28 +7933,49 @@ export function CrovModule({ mode = 'catalogs' }: { mode?: CrovModuleMode }) {
                     }
                   />
                 </div>
-                <div className="grid gap-3">
-                  <label className="text-sm font-medium" htmlFor="monto_de_ahorro">
-                    Monto de ahorro
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">$</span>
+                {!empleadoForm.residente && (
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium" htmlFor="dias_vacaciones">
+                      Días de vacaciones
+                    </label>
                     <Input
-                      id="monto_de_ahorro"
+                      id="dias_vacaciones"
                       type="number"
-                      className="pl-7" 
-                      value={empleadoForm.montoAhorro}
+                      min="0"
+                      value={empleadoForm.dias_vacaciones}
                       onChange={(event) => {
-                        const regex = /^\d*(\.\d{0,3})?$/;
-                        const valor = event.target.value;
-                        if (regex.test(valor)) {
-                          const valorNumerico = valor === '' ? 0 : parseFloat(valor);
-                          updateEmpleadoFormField('montoAhorro', valorNumerico);
-                        }
+                        const valor = parseInt(event.target.value);
+                        updateEmpleadoFormField('dias_vacaciones', isNaN(valor) ? 0 : valor);
                       }}
+                      placeholder="0"
                     />
                   </div>
-                </div>
+                )}
+
+                {!empleadoForm.residente && (
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium" htmlFor="monto_de_ahorro">
+                      Monto de ahorro
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">$</span>
+                      <Input
+                        id="monto_de_ahorro"
+                        type="number"
+                        className="pl-7" 
+                        value={empleadoForm.montoAhorro}
+                        onChange={(event) => {
+                          const regex = /^\d*(\.\d{0,3})?$/;
+                          const valor = event.target.value;
+                          if (regex.test(valor)) {
+                            const valorNumerico = valor === '' ? 0 : parseFloat(valor);
+                            updateEmpleadoFormField('montoAhorro', valorNumerico);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
 
               </div>
 

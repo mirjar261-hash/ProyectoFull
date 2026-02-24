@@ -57,12 +57,12 @@ const GUIDE_FLOW_REGISTER: GuideStep[] = [
   }
 ];
 
-// 2. DEVOLUCIÓN DE COMPRA
+// 2. DEVOLUCIÓN DE COMPRA (ACTUALIZADO CON F4)
 const GUIDE_FLOW_RETURNS: GuideStep[] = [
   {
     targetKey: "btn-buscar-compras",
     title: "1. Historial de Compras",
-    content: "Haz clic en 'Historial / Devoluciones' para buscar la compra a devolver.",
+    content: "Haz clic en 'Historial / Devoluciones (F4)' o presiona la tecla F4 para buscar la compra a devolver.",
     placement: "bottom",
     modalPosition: "bottom-right",
     disableNext: true 
@@ -243,7 +243,7 @@ export default function ComprasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- HANDLER BOTÓN HISTORIAL (Validación Local) ---
+  // --- HANDLER BOTÓN HISTORIAL (CLIC AUTOMÁTICO EN EL MODAL REAL) ---
   const handleOpenHistory = () => {
     if (!hasPurchases) {
         toast.warning("No hay historial de compras registrado.", {
@@ -251,9 +251,41 @@ export default function ComprasPage() {
         });
         return; 
     }
-    // Nota: El modal de búsqueda real está en CompraForm
-    toast.info("Abre el buscador de compras (F3) dentro del formulario.");
+
+    // Buscamos el panel de la pestaña que está activa en este momento
+    const activeTabElement = document.querySelector('[role="tabpanel"][data-state="active"]');
+
+    if (activeTabElement) {
+        // Buscamos el botón real de "Buscar compras" dentro de ese formulario y le hacemos clic
+        const searchBtn = Array.from(activeTabElement.querySelectorAll('button')).find(
+            (btn) => btn.textContent?.includes('Buscar compras') || btn.textContent?.includes('Buscar compra')
+        );
+
+        if (searchBtn) {
+            (searchBtn as HTMLButtonElement).click();
+            return; // ¡Éxito! Se abre la ventana
+        }
+    }
+
+    // Mensaje de respaldo por si no encuentra el botón
+    toast.info("Haz clic en el botón 'Buscar compras' a la derecha de la pantalla.");
   };
+
+  // --- ATAJO DE TECLADO F4 PARA ABRIR HISTORIAL ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F4') {
+        e.preventDefault(); // Evita la acción por defecto del navegador
+        handleOpenHistory(); 
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hasPurchases]); // Depende de hasPurchases para que el F4 también se bloquee si no hay compras
 
   // --- HANDLER MENÚ GUÍA ---
   const handleManualGuideClick = (flow: 'REGISTER' | 'RETURNS') => {
@@ -312,7 +344,7 @@ export default function ComprasPage() {
             <h1 className="text-2xl font-bold text-orange-600">Compras</h1>
             
             <div className="flex gap-2">
-                 {/* BOTÓN HISTORIAL CON VALIDACIÓN */}
+                 {/* BOTÓN HISTORIAL CON VALIDACIÓN Y ATAJO F4 */}
                 <Button 
                     variant="outline" 
                     onClick={handleOpenHistory}
@@ -321,7 +353,7 @@ export default function ComprasPage() {
                     data-guide="btn-buscar-compras" 
                 >
                     <History className="w-4 h-4 mr-2" /> 
-                    Historial / Devoluciones
+                    Historial / Devoluciones (F4)
                 </Button>
 
                 <Button onClick={agregarTab} className="bg-orange-500 text-white">
@@ -417,7 +449,6 @@ export default function ComprasPage() {
                 isActive={activeTab === t} 
                 onSearchOpen={handleSearchModalOpened}
                 onProductModalChange={setIsProductModalOpen}
-                //isInventoryEmpty={isInventoryEmpty} // PASAMOS EL ESTADO DE BLOQUEO
             />
           </TabsContent>
         ))}

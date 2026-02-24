@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -12,12 +14,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Bug, ClipboardList, BookOpen, LifeBuoy, Loader2, Plus, RotateCcw, Trash2, ChevronUp, Minus, ChevronDown,  } from 'lucide-react';
+import { Bug, ClipboardList, BookOpen, LifeBuoy, Loader2, Plus, RotateCcw, Trash2, ChevronUp, Minus, ChevronDown, BarChart3, Users, Download, Sparkles } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Tooltip,
@@ -27,8 +30,6 @@ import {
 import { toast } from 'sonner';
 import SimplePieChart from '@/components/SimplePieChart';
 import { getInternalAuthHeaders } from '@/lib/internalAuth';
-import TaskDescTextEditor from '@/components/TaskDescTextEditor/TaskDescTextEditor';
-import { catalogoColoresPerfil } from "@/lib/avatar";
 import AvatarEmpleado from '@/components/crovinternal/AvatarEmpleado';
 import ApartadoSistemas from '@/components/crovinternal/Jira/ApartadoSistemas';
 import TareaFormModal from '@/components/crovinternal/Jira/TareaFormModal';
@@ -72,6 +73,36 @@ interface EmpleadoCrov {
   nombre_completo: string;
   activo: number;
   color_perfil: string | null;
+}
+
+interface PuntosListoUsuarioCrov {
+  id_empleado: number;
+  nombre_completo: string;
+  color_perfil: string | null;
+  puntos_listo: number;
+}
+
+interface ReportePuntosListoPorSprintCrov {
+  sprint: SprintCrov;
+  total_puntos_sprint: number;
+  usuarios: PuntosListoUsuarioCrov[];
+}
+
+interface ComparativaEmpleadoUltimos4SprintsCrov {
+  id_empleado: number;
+  nombre_completo: string;
+  color_perfil: string | null;
+  total_ultimos_4_sprints: number;
+  puntos_por_sprint: {
+    id_sprint: number;
+    nombre_sprint: string;
+    puntos_listo: number;
+  }[];
+}
+
+interface ComparativaPuntosListoUltimos4SprintsCrov {
+  sprints: SprintCrov[];
+  empleados: ComparativaEmpleadoUltimos4SprintsCrov[];
 }
 
 const defaultSprint: Omit<SprintCrov, 'id'> = {
@@ -154,6 +185,8 @@ const estatusChartColors: Record<TareaCrov['estatus'], string> = {
   Listo: '#64748b',
 };
 
+const comparativaSprintPalette = ['#0ea5e9', '#22c55e', '#f59e0b', '#ec4899'];
+
 function TareaTipoBadge({ tipo }: { tipo: TareaCrov['tipo'] }) {
   const config = tareaTipoConfig[tipo] ?? defaultTareaTipoConfig;
   const Icon = config.icon ?? defaultTareaTipoConfig.icon;
@@ -170,6 +203,7 @@ type JiraTab = 'dashboard' | 'backlog' | 'sprints' | 'tablero';
 
 export default function JiraPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const openAiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
   const token =
     typeof window !== 'undefined' ? localStorage.getItem('internalToken') : null;
 
@@ -227,6 +261,20 @@ export default function JiraPage() {
     empleado: '',
     sistema: '',
   });
+  const [reporteSprintModalOpen, setReporteSprintModalOpen] = useState(false);
+  const [reporteSprintLoading, setReporteSprintLoading] = useState(false);
+  const [reporteSprintError, setReporteSprintError] = useState<string | null>(null);
+  const [reporteSprintData, setReporteSprintData] = useState<ReportePuntosListoPorSprintCrov | null>(null);
+  const [comparativaUltimos4Loading, setComparativaUltimos4Loading] = useState(false);
+  const [comparativaUltimos4Error, setComparativaUltimos4Error] = useState<string | null>(null);
+  const [comparativaUltimos4Data, setComparativaUltimos4Data] =
+    useState<ComparativaPuntosListoUltimos4SprintsCrov | null>(null);
+  const [comparativaUltimos4ModalOpen, setComparativaUltimos4ModalOpen] = useState(false);
+  const [resumenSprintModalOpen, setResumenSprintModalOpen] = useState(false);
+  const [resumenSprintLoading, setResumenSprintLoading] = useState(false);
+  const [resumenSprintError, setResumenSprintError] = useState<string | null>(null);
+  const [resumenSprintTexto, setResumenSprintTexto] = useState('');
+  const [resumenSprintSeleccionado, setResumenSprintSeleccionado] = useState<SprintCrov | null>(null);
 
   // ================== Lógica para arrastrar tareas entre sprints en Jira CROV/Backlog ============================
   const [backlogTareaArrastradaId, setBacklogTareaArrastradaId] = useState<number | null>(null);
@@ -287,6 +335,27 @@ export default function JiraPage() {
   // ================== Fin Lógica para arrastrar tareas entre sprints en Jira CROV/Backlog ========================
 
   const authHeaders = useMemo(() => getInternalAuthHeaders(token), [token]);
+
+  const fetchConRutasFallback = useCallback(
+    async <T,>(paths: string[]): Promise<T> => {
+      if (!apiUrl) {
+        throw new Error('No se encontró NEXT_PUBLIC_API_URL para consumir reportes.');
+      }
+
+      let lastError: unknown = null;
+      for (const path of paths) {
+        try {
+          const response = await axios.get<T>(`${apiUrl}${path}`, { headers: authHeaders });
+          return response.data;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      throw lastError || new Error('No fue posible consumir el endpoint de reportes.');
+    },
+    [apiUrl, authHeaders],
+  );
 
   const getNextSprintName = useCallback(() => {
     if (!sprints.length) return 'Sprint_1';
@@ -439,6 +508,415 @@ export default function JiraPage() {
     } finally {
       setSprintInUseUpdating(null);
     }
+  };
+
+  const handleOpenReporteSprint = async (sprint: SprintCrov) => {
+    if (!token) return;
+
+    setReporteSprintModalOpen(true);
+    setReporteSprintLoading(true);
+    setReporteSprintError(null);
+
+    try {
+      const data = await fetchConRutasFallback<ReportePuntosListoPorSprintCrov>([
+        `/jira/reportes/sprints/${sprint.id}/puntos-listo-por-empleado`,
+        `/crovinternal/jira/reportes/sprints/${sprint.id}/puntos-listo-por-empleado`,
+      ]);
+      setReporteSprintData(data);
+    } catch (error) {
+      console.error('Error al obtener reporte LISTO por sprint CROV', error);
+      setReporteSprintError('No fue posible cargar la gráfica del sprint con los endpoints configurados.');
+      setReporteSprintData(null);
+    } finally {
+      setReporteSprintLoading(false);
+    }
+  };
+
+  const handleCargarComparativaUltimos4Sprints = async () => {
+    if (!token) return;
+
+    setComparativaUltimos4ModalOpen(true);
+    setComparativaUltimos4Loading(true);
+    setComparativaUltimos4Error(null);
+    try {
+      const data = await fetchConRutasFallback<ComparativaPuntosListoUltimos4SprintsCrov>([
+        '/jira/reportes/puntos-listo-comparativa-ultimos-4-sprints',
+        '/crovinternal/jira/reportes/puntos-listo-comparativa-ultimos-4-sprints',
+      ]);
+      setComparativaUltimos4Data(data);
+    } catch (error) {
+      console.error('Error al obtener comparativa LISTO de últimos 4 sprints CROV', error);
+      setComparativaUltimos4Error('No fue posible cargar el reporte general de los últimos 4 sprints.');
+      setComparativaUltimos4Data(null);
+    } finally {
+      setComparativaUltimos4Loading(false);
+    }
+  };
+
+  const handleGenerarResumenSprint = async (sprint: SprintCrov) => {
+    setResumenSprintModalOpen(true);
+    setResumenSprintLoading(true);
+    setResumenSprintError(null);
+    setResumenSprintTexto('');
+    setResumenSprintSeleccionado(sprint);
+
+    if (!openAiKey) {
+      setResumenSprintLoading(false);
+      setResumenSprintError('No se encontró NEXT_PUBLIC_OPENAI_API_KEY para generar el resumen con IA.');
+      return;
+    }
+
+    try {
+      const tareasSprint = tareas.filter((tarea) => tarea.id_sprint === sprint.id);
+      const totalTareas = tareasSprint.length;
+      const totalComplejidad = tareasSprint.reduce((acc, tarea) => acc + Number(tarea.complejidad || 0), 0);
+      const tareasListas = tareasSprint.filter((tarea) => tarea.estatus === 'Listo').length;
+      const complejidadListo = tareasSprint
+        .filter((tarea) => tarea.estatus === 'Listo')
+        .reduce((acc, tarea) => acc + Number(tarea.complejidad || 0), 0);
+      const avanceComplejidad = totalComplejidad ? Math.round((complejidadListo / totalComplejidad) * 100) : 0;
+
+      const estatusResumen = estatusOptions.map((estatus) => {
+        const tareasPorEstatus = tareasSprint.filter((tarea) => tarea.estatus === estatus);
+        return {
+          estatus,
+          tareas: tareasPorEstatus.length,
+          complejidad: tareasPorEstatus.reduce((acc, tarea) => acc + Number(tarea.complejidad || 0), 0),
+        };
+      });
+
+      const empleadosMap = new Map<number, {
+        id_empleado: number;
+        nombre: string;
+        tareas: number;
+        tareas_listas: number;
+        puntos_totales: number;
+        puntos_listo: number;
+      }>();
+
+      tareasSprint.forEach((tarea) => {
+        const empleadoId = Number(tarea.id_empleados_crov || 0);
+        if (!empleadosMap.has(empleadoId)) {
+          empleadosMap.set(empleadoId, {
+            id_empleado: empleadoId,
+            nombre: getEmpleadoNombre(empleadoId),
+            tareas: 0,
+            tareas_listas: 0,
+            puntos_totales: 0,
+            puntos_listo: 0,
+          });
+        }
+
+        const registro = empleadosMap.get(empleadoId)!;
+        registro.tareas += 1;
+        registro.puntos_totales += Number(tarea.complejidad || 0);
+        if (tarea.estatus === 'Listo') {
+          registro.tareas_listas += 1;
+          registro.puntos_listo += Number(tarea.complejidad || 0);
+        }
+      });
+
+      const empleadosResumen = Array.from(empleadosMap.values())
+        .sort((a, b) => {
+          if (b.puntos_listo !== a.puntos_listo) return b.puntos_listo - a.puntos_listo;
+          return b.tareas_listas - a.tareas_listas;
+        })
+        .map((empleado) => ({
+          ...empleado,
+          eficacia_pct: empleado.puntos_totales
+            ? Math.round((empleado.puntos_listo / empleado.puntos_totales) * 100)
+            : 0,
+        }));
+
+      const contexto = {
+        sprint: {
+          id: sprint.id,
+          nombre: sprint.nombre,
+          fecha_inicio: sprint.fecha_inicio,
+          fecha_final: sprint.fecha_final,
+        },
+        metricas_generales: {
+          total_tareas: totalTareas,
+          tareas_listas: tareasListas,
+          total_complejidad: totalComplejidad,
+          complejidad_listo: complejidadListo,
+          avance_por_complejidad_pct: avanceComplejidad,
+        },
+        estatus: estatusResumen,
+        empleados: empleadosResumen,
+      };
+
+      const prompt = `
+Con base en este contexto del sprint, genera un resumen empresarial ejecutivo en español.
+Quiero que evalúes desempeño general del sprint y desempeño de cada empleado.
+Formato:
+1) Resumen ejecutivo (5-8 líneas)
+2) Lo que salió bien
+3) Riesgos/áreas de mejora
+4) Evaluación por empleado (nombre, resultado, comentario breve, recomendación accionable)
+5) Próximos pasos para el siguiente sprint (máximo 5)
+Sé concreto, crítico y útil para dirección.
+Contexto JSON:
+${JSON.stringify(contexto)}
+`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${openAiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0.3,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Eres un PMO senior y gerente de delivery. Tu salida debe ser clara, ejecutiva y accionable.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error IA: ${errorText}`);
+      }
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error('La IA no devolvió contenido para el resumen.');
+      }
+
+      setResumenSprintTexto(content);
+    } catch (error) {
+      console.error('Error al generar resumen empresarial del sprint:', error);
+      setResumenSprintError('No se pudo generar el resumen empresarial con IA para este sprint.');
+    } finally {
+      setResumenSprintLoading(false);
+    }
+  };
+
+  const handleExportComparativaUltimos4Pdf = () => {
+    if (!comparativaUltimos4Data || comparativaEmpleadosConPuntos.length === 0) {
+      toast.error('No hay datos de comparativa para exportar.');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const sprints = comparativaSprintsOrdenados;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 14;
+    const chartTopMargin = 30;
+    const chartHeight = 24;
+    const groupHeight = 34;
+    const barWidth = 8;
+    const barGap = 6;
+    const maxBars = 4;
+    const maxPuntos = Math.max(
+      1,
+      ...comparativaEmpleadosConPuntos.flatMap((empleado) =>
+        empleado.puntos_por_sprint.map((item) => Number(item.puntos_listo || 0)),
+      ),
+    );
+
+    doc.setFontSize(14);
+    doc.text('Comparativa puntos LISTO - Ultimos 4 sprints', marginX, 16);
+    doc.setFontSize(10);
+    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, marginX, 22);
+
+    let y = chartTopMargin;
+    doc.setFontSize(9);
+    doc.text('Leyenda:', marginX, y);
+    let legendX = marginX + 18;
+    sprints.slice(0, maxBars).forEach((sprint, index) => {
+      const color = comparativaSprintPalette[index % comparativaSprintPalette.length];
+      doc.setFillColor(color);
+      doc.rect(legendX, y - 3, 4, 4, 'F');
+      doc.setTextColor(55, 65, 81);
+      doc.text(sprint.nombre, legendX + 6, y);
+      legendX += 42;
+    });
+
+    y += 8;
+    comparativaEmpleadosConPuntos.forEach((empleado) => {
+      if (y + groupHeight > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setTextColor(17, 24, 39);
+      doc.setFontSize(10);
+      doc.text(empleado.nombre_completo, marginX, y);
+
+      const chartBaseY = y + chartHeight;
+      let x = marginX + 2;
+      empleado.puntos_por_sprint.slice(0, maxBars).forEach((item, index) => {
+        const color = comparativaSprintPalette[index % comparativaSprintPalette.length];
+        const value = Number(item.puntos_listo || 0);
+        const currentHeight = value > 0 ? Math.max(2, Math.round((value / maxPuntos) * chartHeight)) : 0;
+
+        doc.setFillColor(229, 231, 235);
+        doc.rect(x, chartBaseY - chartHeight, barWidth, chartHeight, 'F');
+        if (currentHeight > 0) {
+          doc.setFillColor(color);
+          doc.rect(x, chartBaseY - currentHeight, barWidth, currentHeight, 'F');
+        }
+        doc.setFontSize(8);
+        doc.setTextColor(55, 65, 81);
+        doc.text(String(value), x + 1, chartBaseY + 4);
+
+        x += barWidth + barGap;
+      });
+
+      doc.setFontSize(9);
+      doc.setTextColor(31, 41, 55);
+      doc.text(`Total: ${empleado.total_ultimos_4_sprints} pts`, marginX + 66, y);
+      y += groupHeight;
+    });
+
+    if (y > pageHeight - 40) {
+      doc.addPage();
+      y = 20;
+    }
+
+    autoTable(doc, {
+      startY: y,
+      head: [[
+        'Empleado',
+        ...(sprints.slice(0, maxBars).map((sprint) => sprint.nombre)),
+        'Total',
+      ]],
+      body: comparativaEmpleadosConPuntos.map((empleado) => [
+        empleado.nombre_completo,
+        ...empleado.puntos_por_sprint.slice(0, maxBars).map((item) => String(item.puntos_listo)),
+        String(empleado.total_ultimos_4_sprints),
+      ]),
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [15, 118, 110] },
+    });
+
+    doc.save('comparativa-puntos-listo-ultimos-4-sprints.pdf');
+  };
+
+  const handleExportReporteSprintPdf = () => {
+    if (!reporteSprintData || reporteSprintUsuariosConPuntos.length === 0) {
+      toast.error('No hay datos para exportar en PDF.');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const sprintNombre = reporteSprintData.sprint?.nombre || `Sprint_${reporteSprintData.sprint?.id ?? ''}`;
+    const fechaInicio = reporteSprintData.sprint?.fecha_inicio || 'Sin fecha inicio';
+    const fechaFin = reporteSprintData.sprint?.fecha_final || 'Sin fecha fin';
+    const fechaGeneracion = new Date().toLocaleString('es-MX');
+
+    doc.setFontSize(14);
+    doc.text('Reporte de puntos LISTO por empleado', 14, 16);
+    doc.setFontSize(11);
+    doc.text(`Sprint: ${sprintNombre}`, 14, 24);
+    doc.text(`Periodo: ${fechaInicio} al ${fechaFin}`, 14, 30);
+    doc.text(`Total puntos LISTO: ${reporteSprintData.total_puntos_sprint}`, 14, 36);
+    doc.text(`Generado: ${fechaGeneracion}`, 14, 42);
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 14;
+    const usableWidth = pageWidth - marginX * 2;
+    const labelWidth = 58;
+    const valueWidth = 18;
+    const barTrackWidth = usableWidth - labelWidth - valueWidth - 6;
+    const barHeight = 4;
+    const rowGap = 7;
+    const maxPuntos = Math.max(1, ...reporteSprintUsuariosConPuntos.map((usuario) => usuario.puntos_listo));
+
+    let currentY = 50;
+    doc.setFontSize(11);
+    doc.text('Gráfica de barras (puntos LISTO por empleado)', marginX, currentY);
+    currentY += 6;
+
+    reporteSprintUsuariosConPuntos.forEach((usuario) => {
+      if (currentY + rowGap > pageHeight - 18) {
+        doc.addPage();
+        currentY = 20;
+        doc.setFontSize(11);
+        doc.text('Gráfica de barras (continuación)', marginX, currentY);
+        currentY += 6;
+      }
+
+      const nombre = usuario.nombre_completo.length > 24
+        ? `${usuario.nombre_completo.slice(0, 24)}...`
+        : usuario.nombre_completo;
+      const barWidth = Math.max(1, Math.round((usuario.puntos_listo / maxPuntos) * barTrackWidth));
+
+      doc.setFontSize(9);
+      doc.setTextColor(55, 65, 81);
+      doc.text(nombre, marginX, currentY + 3.5);
+
+      doc.setFillColor(229, 231, 235);
+      doc.rect(marginX + labelWidth, currentY + 0.5, barTrackWidth, barHeight, 'F');
+
+      doc.setFillColor(34, 197, 94);
+      doc.rect(marginX + labelWidth, currentY + 0.5, barWidth, barHeight, 'F');
+
+      doc.setTextColor(17, 24, 39);
+      doc.text(String(usuario.puntos_listo), marginX + labelWidth + barTrackWidth + 4, currentY + 3.5);
+
+      currentY += rowGap;
+    });
+
+    currentY += 4;
+    if (currentY > pageHeight - 35) {
+      doc.addPage();
+      currentY = 20;
+    }
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Empleado', 'Puntos LISTO', '% del total']],
+      body: reporteSprintUsuariosConPuntos.map((usuario) => {
+        const porcentaje = reporteSprintData.total_puntos_sprint
+          ? ((usuario.puntos_listo / reporteSprintData.total_puntos_sprint) * 100).toFixed(1)
+          : '0.0';
+        return [usuario.nombre_completo, String(usuario.puntos_listo), `${porcentaje}%`];
+      }),
+      styles: { fontSize: 10, cellPadding: 2.5 },
+      headStyles: { fillColor: [249, 115, 22] },
+    });
+
+    doc.save(`reporte-puntos-listo-${sprintNombre.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  };
+
+  const handleExportResumenSprintPdf = () => {
+    if (!resumenSprintTexto.trim()) {
+      toast.error('No hay resumen para exportar.');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const sprintNombre = resumenSprintSeleccionado?.nombre || 'Sprint';
+    const fechaInicio = resumenSprintSeleccionado?.fecha_inicio || 'Sin fecha inicio';
+    const fechaFin = resumenSprintSeleccionado?.fecha_final || 'Sin fecha fin';
+
+    doc.setFontSize(14);
+    doc.text('Resumen empresarial del sprint (IA)', 14, 16);
+    doc.setFontSize(11);
+    doc.text(`Sprint: ${sprintNombre}`, 14, 24);
+    doc.text(`Periodo: ${fechaInicio} al ${fechaFin}`, 14, 30);
+    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, 14, 36);
+
+    const lineas = doc.splitTextToSize(resumenSprintTexto, pageWidth - 28);
+    doc.setFontSize(10);
+    doc.text(lineas, 14, 46);
+
+    doc.save(`resumen-ia-${sprintNombre.replace(/\s+/g, '-').toLowerCase()}.pdf`);
   };
 
   const handleUpdateTareaEstatus = async (tareaId: number, nuevoEstatus: TareaCrov['estatus']) => {
@@ -606,6 +1084,58 @@ export default function JiraPage() {
       }));
   }, [sprints, tareas]);
 
+  const maxPuntosReporteSprint = useMemo(() => {
+    if (!reporteSprintData?.usuarios?.length) return 1;
+    return Math.max(1, ...reporteSprintData.usuarios.map((usuario) => Number(usuario.puntos_listo || 0)));
+  }, [reporteSprintData]);
+
+  const comparativaSprintsOrdenados = useMemo(() => {
+    if (!comparativaUltimos4Data?.sprints?.length) return [] as SprintCrov[];
+    return [...comparativaUltimos4Data.sprints].sort((a, b) => {
+      const aDate = a.fecha_inicio ? new Date(a.fecha_inicio).getTime() : 0;
+      const bDate = b.fecha_inicio ? new Date(b.fecha_inicio).getTime() : 0;
+      if (aDate !== bDate) return aDate - bDate;
+      return a.id - b.id;
+    });
+  }, [comparativaUltimos4Data]);
+
+  const comparativaEmpleadosOrdenadosPorSprint = useMemo(() => {
+    if (!comparativaUltimos4Data?.empleados?.length) return [] as ComparativaEmpleadoUltimos4SprintsCrov[];
+
+    const ordenSprint = new Map<number, number>(
+      comparativaSprintsOrdenados.map((sprint, index) => [sprint.id, index]),
+    );
+
+    return comparativaUltimos4Data.empleados.map((empleado) => ({
+      ...empleado,
+      puntos_por_sprint: [...empleado.puntos_por_sprint].sort(
+        (a, b) => (ordenSprint.get(a.id_sprint) ?? 999) - (ordenSprint.get(b.id_sprint) ?? 999),
+      ),
+    }));
+  }, [comparativaSprintsOrdenados, comparativaUltimos4Data]);
+
+  const reporteSprintUsuariosConPuntos = useMemo(() => {
+    if (!reporteSprintData?.usuarios?.length) return [] as PuntosListoUsuarioCrov[];
+    return reporteSprintData.usuarios.filter((usuario) => Number(usuario.puntos_listo || 0) > 0);
+  }, [reporteSprintData]);
+
+  const comparativaEmpleadosConPuntos = useMemo(() => {
+    if (!comparativaEmpleadosOrdenadosPorSprint.length) return [] as ComparativaEmpleadoUltimos4SprintsCrov[];
+    return comparativaEmpleadosOrdenadosPorSprint.filter(
+      (empleado) =>
+        Number(empleado.total_ultimos_4_sprints || 0) > 0 ||
+        empleado.puntos_por_sprint.some((item) => Number(item.puntos_listo || 0) > 0),
+    );
+  }, [comparativaEmpleadosOrdenadosPorSprint]);
+
+  const maxPuntosComparativaPorSprint = useMemo(() => {
+    if (!comparativaEmpleadosOrdenadosPorSprint.length) return 1;
+    const points = comparativaEmpleadosOrdenadosPorSprint.flatMap((empleado) =>
+      empleado.puntos_por_sprint.map((item) => Number(item.puntos_listo || 0)),
+    );
+    return Math.max(1, ...points);
+  }, [comparativaEmpleadosOrdenadosPorSprint]);
+
   const tableroTareas = useMemo(() => {
     if (!sprintEnUso) return [] as TareaCrov[];
 
@@ -762,6 +1292,7 @@ export default function JiraPage() {
           <TableRow>
             <TableHead>ID</TableHead>
             <TableHead>Título</TableHead>
+            <TableHead>Proyecto</TableHead>
             <TableHead>Story points</TableHead>
             <TableHead>Prioridad</TableHead>
             <TableHead>Estatus</TableHead>
@@ -832,6 +1363,27 @@ export default function JiraPage() {
                     }
                   }}
                 />
+              </TableCell>
+
+              <TableCell>
+                <Select
+                  value={String(tarea.id_sistemas_crov)}
+                  onValueChange={(val) =>
+                    handleEditarEnLineaTareaBacklog(tarea.id, "id_sistemas_crov", Number(val))
+                  }
+                >
+                  <SelectTrigger className="group h-8 w-full px-2 border border-transparent shadow-none bg-transparent hover:border-gray-300 hover:bg-white focus:ring-0 data-[state=open]:bg-white transition-all [&>svg]:opacity-0 group-hover:[&>svg]:opacity-100 data-[state=open]:[&>svg]:opacity-100">
+                    <SelectValue placeholder="Select a fruit" />
+                  </SelectTrigger>
+                  <SelectContent className='bg-white'>
+                    <SelectGroup>
+                      {sistemas.map((sistema) => (
+                        <SelectItem key={sistema.id} value={String(sistema.id)}>{sistema.nombre}</SelectItem>
+                      ))}
+                      
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </TableCell>
 
               <TableCell>
@@ -1100,7 +1652,7 @@ export default function JiraPage() {
             {!sprintEnUso ? (
               <Card>
                 <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                  No hay un sprint marcado como "en uso". Activa un sprint para visualizar el tablero ejecutivo.
+                  No hay un sprint marcado como en uso. Activa un sprint para visualizar el tablero ejecutivo.
                 </CardContent>
               </Card>
             ) : (
@@ -1144,7 +1696,7 @@ export default function JiraPage() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold">{sprintDashboardStats.complejidadListo}</p>
-                      <p className="text-xs text-muted-foreground">Complejidad sumada en "Listo"</p>
+                      <p className="text-xs text-muted-foreground">Complejidad sumada en Listo</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -1204,7 +1756,7 @@ export default function JiraPage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Comparativa de sprints (complejidad en "Listo")</CardTitle>
+                    <CardTitle className="text-base">Comparativa de sprints (complejidad en Listo)</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {comparativaComplejidadSprints.map((item) => (
@@ -1242,7 +1794,21 @@ export default function JiraPage() {
           </TabsContent>
 
           <TabsContent value="sprints" className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <Button
+                variant="outline"
+                className="w-full border-slate-300 md:w-auto"
+                onClick={handleCargarComparativaUltimos4Sprints}
+                disabled={comparativaUltimos4Loading}
+              >
+                {comparativaUltimos4Loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Users className="mr-2 h-4 w-4" />
+                )}
+                Reporte general últimos 4 sprints
+              </Button>
+
               <Dialog
                 open={sprintModalOpen}
                 onOpenChange={(open) => {
@@ -1321,6 +1887,100 @@ export default function JiraPage() {
               </Dialog>
             </div>
 
+            <Dialog
+              open={comparativaUltimos4ModalOpen}
+              onOpenChange={(open) => {
+                setComparativaUltimos4ModalOpen(open);
+                if (!open) {
+                  setComparativaUltimos4Error(null);
+                }
+              }}
+            >
+              <DialogContent className="w-[96vw] max-w-6xl max-h-[90vh] overflow-hidden">
+                <DialogHeader className="pr-6">
+                  <DialogTitle>Comparativa de puntos LISTO en los últimos 4 sprints</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 overflow-y-auto pr-2 max-h-[76vh]">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={handleExportComparativaUltimos4Pdf}
+                      disabled={comparativaUltimos4Loading || comparativaEmpleadosConPuntos.length === 0}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar PDF
+                    </Button>
+                  </div>
+                  {comparativaUltimos4Loading ? (
+                    <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cargando comparativa...
+                    </div>
+                  ) : comparativaUltimos4Error ? (
+                    <p className="text-sm text-red-600">{comparativaUltimos4Error}</p>
+                  ) : comparativaUltimos4Data && comparativaEmpleadosConPuntos.length > 0 ? (
+                    <>
+                      <div className="flex flex-wrap gap-3 rounded-md border bg-muted/20 p-3 text-xs">
+                        {comparativaSprintsOrdenados.slice(0, 4).map((sprint, index) => (
+                          <div key={`leyenda-sprint-${sprint.id}`} className="flex items-center gap-2">
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: comparativaSprintPalette[index % comparativaSprintPalette.length] }}
+                            />
+                            <span className="text-muted-foreground">{sprint.nombre}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-3">
+                        {comparativaEmpleadosConPuntos.map((empleado) => (
+                          <div key={empleado.id_empleado} className="rounded-lg border p-3">
+                            <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                              <div className="w-full md:w-64">
+                                <p className="text-sm font-semibold">{empleado.nombre_completo}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Total: {empleado.total_ultimos_4_sprints} puntos
+                                </p>
+                              </div>
+                              <div className="flex flex-1 items-end justify-start gap-4 overflow-x-auto pb-1">
+                                {empleado.puntos_por_sprint.slice(0, 4).map((item, sprintIndex) => {
+                                  const current = Number(item.puntos_listo || 0);
+                                  const heightPercent = Math.round((current / maxPuntosComparativaPorSprint) * 100);
+                                  const color = comparativaSprintPalette[sprintIndex % comparativaSprintPalette.length];
+
+                                  return (
+                                    <div key={`${empleado.id_empleado}-${item.id_sprint}`} className="flex min-w-[88px] flex-col items-center gap-2">
+                                      <span className="text-xs font-medium text-slate-700">{current}</span>
+                                      <div className="flex h-28 w-10 items-end rounded-md bg-slate-100 p-1">
+                                        <div
+                                          className="w-full rounded-sm transition-all"
+                                          style={{
+                                            height: `${current > 0 ? Math.max(10, heightPercent) : 0}%`,
+                                            backgroundColor: color,
+                                          }}
+                                          aria-label={`${item.nombre_sprint} ${current} puntos`}
+                                        />
+                                      </div>
+                                      <span className="text-[11px] text-center text-muted-foreground">
+                                        {item.nombre_sprint}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No hay empleados con puntos LISTO en los últimos 4 sprints.
+                    </p>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1352,6 +2012,24 @@ export default function JiraPage() {
                         }}
                       >
                         Ver tareas
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                        onClick={() => handleOpenReporteSprint(sprint)}
+                      >
+                        <BarChart3 className="mr-1 h-4 w-4" />
+                        Gráfica LISTO
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                        onClick={() => handleGenerarResumenSprint(sprint)}
+                      >
+                        <Sparkles className="mr-1 h-4 w-4" />
+                        Resumen
                       </Button>
                       <Button
                         variant="outline"
@@ -1493,6 +2171,136 @@ export default function JiraPage() {
                 </div>
               </DialogContent>
             </Dialog>
+
+            <Dialog
+              open={reporteSprintModalOpen}
+              onOpenChange={(open) => {
+                setReporteSprintModalOpen(open);
+                if (!open) {
+                  setReporteSprintData(null);
+                  setReporteSprintError(null);
+                }
+              }}
+            >
+              <DialogContent className="w-[95vw] max-w-4xl max-h-[88vh] overflow-hidden">
+                <DialogHeader className="pr-6">
+                  <DialogTitle>
+                    {reporteSprintData?.sprint?.nombre
+                      ? `Puntos LISTO por empleado - ${reporteSprintData.sprint.nombre}`
+                      : 'Puntos LISTO por empleado'}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 overflow-y-auto pr-2 max-h-[72vh]">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={handleExportReporteSprintPdf}
+                      disabled={reporteSprintLoading || reporteSprintUsuariosConPuntos.length === 0}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar PDF
+                    </Button>
+                  </div>
+                  {reporteSprintLoading ? (
+                    <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cargando reporte del sprint...
+                    </div>
+                  ) : reporteSprintError ? (
+                    <p className="text-sm text-red-600">{reporteSprintError}</p>
+                  ) : reporteSprintData ? (
+                    <>
+                      <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                        <p>
+                          Total del sprint en LISTO:{' '}
+                          <span className="font-semibold">{reporteSprintData.total_puntos_sprint}</span> puntos
+                        </p>
+                      </div>
+                      {reporteSprintUsuariosConPuntos.length > 0 ? (
+                        <div className="space-y-3">
+                          {reporteSprintUsuariosConPuntos.map((usuario) => {
+                            const width = Math.round((Number(usuario.puntos_listo || 0) / maxPuntosReporteSprint) * 100);
+
+                            return (
+                              <div key={usuario.id_empleado} className="space-y-2 rounded-lg border p-3">
+                                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
+                                  <span className="font-semibold">{usuario.nombre_completo}</span>
+                                  <span className="text-muted-foreground">{usuario.puntos_listo} puntos</span>
+                                </div>
+                                <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+                                  <div
+                                    className="h-full rounded-full bg-green-500"
+                                    style={{ width: `${width}%` }}
+                                    aria-label={`${usuario.nombre_completo} ${usuario.puntos_listo} puntos`}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No hay empleados con puntos LISTO en este sprint.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay datos para este sprint.</p>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={resumenSprintModalOpen}
+              onOpenChange={(open) => {
+                setResumenSprintModalOpen(open);
+                if (!open) {
+                  setResumenSprintError(null);
+                  setResumenSprintTexto('');
+                }
+              }}
+            >
+              <DialogContent className="w-[95vw] max-w-4xl max-h-[88vh] overflow-hidden">
+                <DialogHeader className="pr-6">
+                  <DialogTitle>
+                    {resumenSprintSeleccionado
+                      ? `Resumen empresarial IA - ${resumenSprintSeleccionado.nombre}`
+                      : 'Resumen empresarial IA del sprint'}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 overflow-y-auto pr-2 max-h-[72vh]">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={handleExportResumenSprintPdf}
+                      disabled={resumenSprintLoading || !resumenSprintTexto.trim()}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar PDF
+                    </Button>
+                  </div>
+                  {resumenSprintLoading ? (
+                    <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generando resumen empresarial con IA...
+                    </div>
+                  ) : resumenSprintError ? (
+                    <p className="text-sm text-red-600">{resumenSprintError}</p>
+                  ) : resumenSprintTexto ? (
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <pre className="whitespace-pre-wrap text-sm leading-6 text-slate-800 font-sans">
+                        {resumenSprintTexto}
+                      </pre>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No hay resumen disponible para este sprint.
+                    </p>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="tablero" className="space-y-4">
@@ -1555,18 +2363,25 @@ export default function JiraPage() {
                         </div>
                       </div>
                       <ScrollArea className="h-[520px] pr-2">
-                        <div className="space-y-3">
-                          {tareasColumna.map((tarea) => (
-                            <div
-  key={tarea.id}
-  draggable
-  onDragStart={() => handleCardDragStart(tarea.id)}
-  onDragEnd={handleCardDragEnd}
-  onClick={() => handleOpenTareaDetalle(tarea)}
-  className={`cursor-pointer rounded-lg border bg-slate-100 p-4 shadow-sm transition hover:shadow-md ${
-    draggingTareaId === tarea.id ? 'opacity-50' : ''
-  }`}
->
+  <div className="space-y-3">
+    {tareasColumna.map((tarea) => {
+  const esReabierta = tarea.reabierto === 1;
+
+  return (
+    <div
+      key={tarea.id}
+      draggable
+      onDragStart={() => handleCardDragStart(tarea.id)}
+      onDragEnd={handleCardDragEnd}
+      onClick={() => handleOpenTareaDetalle(tarea)}
+      className={`cursor-pointer rounded-lg border p-4 shadow-sm transition hover:shadow-md ${
+        esReabierta
+          ? "bg-red-200 border-red-500"
+          : "bg-slate-100"
+      } ${
+        draggingTareaId === tarea.id ? "opacity-50" : ""
+      }`}
+    >
   {/* Título */}
   <p className="text-sm font-semibold text-slate-800 leading-tight">
     {tarea.titulo}
@@ -1676,7 +2491,7 @@ export default function JiraPage() {
   </div>
 </div>
 
-                          ))}
+                          );})}
                           {tareasColumna.length === 0 && (
                             <p className="text-center text-xs text-muted-foreground">Sin tareas en este estatus.</p>
                           )}
@@ -1688,7 +2503,7 @@ export default function JiraPage() {
               </div>
             )}
 
-            {/* MODAL DE EDICION DE TAREAS AL VER DETALLE DE TAREA EN TABLERO */}
+{/* MODAL DE EDICION DE TAREAS AL VER DETALLE DE TAREA EN TABLERO */}
             {tareaTableroDetalle && (
               <TareaFormModal
                 open={Boolean(tareaTableroDetalle)}
@@ -1877,3 +2692,4 @@ export default function JiraPage() {
     </Card>
   );
 }
+

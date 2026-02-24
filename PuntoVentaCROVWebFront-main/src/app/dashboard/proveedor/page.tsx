@@ -291,9 +291,14 @@ export default function ProveedoresPage() {
   const preventWheel = (e: React.WheelEvent<HTMLInputElement>) => {
     (e.target as HTMLInputElement).blur();
   };
-  const handlePasteDecimalPositive = (e: React.ClipboardEvent<HTMLInputElement>) => { /* ... */ };
-  const handlePasteIntPositive = (e: React.ClipboardEvent<HTMLInputElement>) => { /* ... */ };
 
+  // Helper para formatear número con comas
+  const formatNumberWithCommas = (value: string) => {
+    if (!value) return '';
+    const parts = value.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  };
 
   return (
     <div className="space-y-6 relative">
@@ -338,13 +343,13 @@ export default function ProveedoresPage() {
                 <div className="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-slate-900 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 animate-in fade-in zoom-in-95 duration-200">
                 <div className="py-1">
                     <button onClick={() => startGuide('REGISTER')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                     ➕ Registrar Proveedor
+                      ➕ Registrar Proveedor
                     </button>
                     <button onClick={() => startGuide('UPDATE')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                     ✏️ Modificar Proveedor
+                      ✏️ Modificar Proveedor
                     </button>
                     <button onClick={() => startGuide('DELETE')} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 border-t">
-                     🗑️ Eliminar Proveedor
+                      🗑️ Eliminar Proveedor
                     </button>
                 </div>
                 </div>
@@ -427,17 +432,17 @@ export default function ProveedoresPage() {
             <div>
               <label className="text-sm font-medium text-gray-700">Límite de crédito</label>
               <Input
-                value={form.limite_credito ?? ''}
-                type="number"
+                value={formatNumberWithCommas(form.limite_credito ?? '')}
+                type="text"
                 inputMode="decimal"
-                min={0}
-                step="1"
                 onKeyDown={blockInvalidKeys}
                 onWheel={preventWheel}
                 onChange={(e) => {
-                  const v = Number(e.target.value.replace(',', '.'));
-                  const safe = Number.isFinite(v) ? Math.max(0, v) : '';
-                  setForm({ ...form, limite_credito: safe === '' ? '' : String(safe) });
+                  // Eliminamos comas para procesar el valor numérico puro
+                  const rawValue = e.target.value.replace(/,/g, '');
+                  if (rawValue === '' || /^\d*\.?\d*$/.test(rawValue)) {
+                    setForm({ ...form, limite_credito: rawValue });
+                  }
                 }}
               />
             </div>

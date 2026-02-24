@@ -285,22 +285,16 @@ useEffect(() => {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => router.push("/crovinternal/dashboard/rh")}
-            disabled={isSubPageRoute}
-            className={`flex items-center gap-1 text-sm ${
-              isSubPageRoute
-                ? "text-orange-600 cursor-default"
-                : "text-orange-600 hover:underline"
+            className={`flex items-center gap-1 text-sm text-orange-600 hover:underline ${
+              pathname?.startsWith("/crovinternal/dashboard/rh") ? "font-bold" : ""
             }`}
           >
             <UserCog size={16} /> RH
           </button>
           <button
             onClick={() => router.push("/crovinternal/dashboard/perfil")}
-            disabled={isSubPageRoute}
-            className={`flex items-center gap-1 text-sm ${
-              isSubPageRoute
-                ? "text-orange-600 cursor-default"
-                : "text-orange-600 hover:underline"
+            className={`flex items-center gap-1 text-sm text-orange-600 hover:underline ${
+              pathname?.startsWith("/crovinternal/dashboard/perfil") ? "font-bold" : ""
             }`}
           >
             <User size={16} /> Mi perfil

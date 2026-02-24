@@ -15,9 +15,9 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, RotateCcw, Bug, ClipboardList, BookOpen, LifeBuoy, ChevronUp, Minus, ChevronDown } from 'lucide-react';
-import TaskDescTextEditor from '@/components/TaskDescTextEditor/TaskDescTextEditor';
+import TaskDescTextEditor from '@/components/crovinternal/Jira/TaskDescTextEditor/TaskDescTextEditor';
 import { toast } from 'sonner';
-import { getDeletedImages } from '@/lib/utils';
+import { getDeletedFiles } from '@/lib/utils';
 
 interface TareaCrov {
   id: number;
@@ -69,6 +69,7 @@ interface TareaFormModalProps {
   apiUrl: string;
   authHeaders: Record<string, string> | undefined;
 }
+
 
 
 
@@ -129,6 +130,10 @@ const TareaFormModal = memo(({
   const tareaPendingImagesRef = useRef<Map<string, File>>(new Map());
   const tareaOriginalDescripcionRef = useRef<string>("");
 
+  // estados para la barra de progreso
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+
   const tareasEndpoint = `${apiUrl}/crovinternal/tareas-crov`;
 
   // Cargar datos de tarea a editar cuando se abre el modal o cambia tareaToEdit
@@ -157,9 +162,16 @@ const TareaFormModal = memo(({
     }
   }, [open, tareaToEdit]);
 
-const uploadPendingImagesAndReplaceHtml = async (html: string): Promise<string> => {
+const uploadPendingFilesAndReplaceHtml = async (html: string): Promise<string> => {
   let updatedHtml = html;
+  const filesToUpload = Array.from(tareaPendingImagesRef.current.entries());
+
+  if (filesToUpload.length === 0) return updatedHtml; // si no hay archivos en memoria, se termina instantaneamente
   
+  setIsUploading(true);
+  setUploadProgress(0);
+  const progressMap: Record<string, number> = {};
+
   const uploads = Array.from(tareaPendingImagesRef.current.entries()).map(
     async ([blobUrl, file]) => {
       try {
@@ -171,6 +183,18 @@ const uploadPendingImagesAndReplaceHtml = async (html: string): Promise<string> 
 
         await axios.put(data.uploadUrl, file, {
           headers: { "Content-Type": file.type },
+          onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                // Cálculo de progreso en tiempo real
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                progressMap[blobUrl] = percentCompleted;
+
+                const totalPercentages = Object.values(progressMap).reduce((a, b) => a + b, 0);
+                const averageProgress = Math.round(totalPercentages / filesToUpload.length);
+                
+                setUploadProgress(averageProgress);
+              }
+            }
         });
 
         return { blobUrl, publicUrl: data.publicUrl, success: true };
@@ -182,6 +206,7 @@ const uploadPendingImagesAndReplaceHtml = async (html: string): Promise<string> 
   );
 
   const results = await Promise.all(uploads);
+  setIsUploading(false);
 
   // Solo reemplazar las imágenes que se subieron exitosamente
   results.forEach(({ blobUrl, publicUrl, success }) => {
@@ -193,8 +218,8 @@ const uploadPendingImagesAndReplaceHtml = async (html: string): Promise<string> 
   // mostrar si no se pudieron subir imagenes
   const failedUploads = results.filter(r => !r.success);
   if (failedUploads.length > 0) {
-    console.warn(`${failedUploads.length} imagen(es) no se pudieron subir`);
-    toast.warning(`${failedUploads.length} imagen(es) no se pudieron subir, intente nuevamente.`);
+    console.warn(`${failedUploads.length} archivo(s) no se pudieron subir`);
+    toast.warning(`${failedUploads.length} archivos(s) no se pudieron subir, intente nuevamente.`);
   }
 
   return updatedHtml;
@@ -230,11 +255,11 @@ const uploadPendingImagesAndReplaceHtml = async (html: string): Promise<string> 
     setSaving(true);
     
     try {
-      const finalDescription = await uploadPendingImagesAndReplaceHtml(
+      const finalDescription = await uploadPendingFilesAndReplaceHtml(
         tareaForm.descripcion || ""
       );
 
-      const deletedImages = getDeletedImages(
+      const deletedImages = getDeletedFiles(
         tareaOriginalDescripcionRef.current,
         finalDescription
       );
@@ -643,6 +668,23 @@ const uploadPendingImagesAndReplaceHtml = async (html: string): Promise<string> 
               />
               Activo
             </label>
+          </div>
+
+          <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
+              {/* Barra de progreso de subida de archivos */}
+              {isUploading && (
+                <div className="w-full sm:w-64">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-orange-500 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 text-right">
+                    Subiendo archivos... {uploadProgress}%
+                  </p>
+                </div>
+              )}
           </div>
 
           {/* Botones */}

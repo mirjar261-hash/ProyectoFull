@@ -778,6 +778,7 @@ model Venta {
   totalAbonado          Float      @default(0)
   descuento             Float?
   descuentoind          Float?
+  descuento_pesos       Float?
   tipo_descuento        String?
   ahorro                Float?
   efectivo              Float?

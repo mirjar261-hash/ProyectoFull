@@ -19,7 +19,7 @@ import prisma from '../utils/prisma';
 import bcrypt from 'bcrypt';
 import {deleteImageByUrlForJiraTasks} from './s3.controller';
 import { calcularDiasHabiles, formatearFechaEsp } from '../utils/date';
-import { notificarNuevaSolicitudIncidenciaRH } from '../services/rh.service'; 
+import { notificarNuevaSolicitudIncidenciaRH, notificarEvaluacionSolicitudIncidenciaRH } from '../services/rh.service'; 
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY as string;
 const stripe = new Stripe(stripeSecret, { apiVersion: '2024-04-10' as any });
@@ -1656,6 +1656,18 @@ export const crearEmpleadoCROV: RequestHandler = async (req, res) => {
     }
    const totalAhorro = parseOptionalDecimal(body.totalAhorro, 'totalAhorro');
     const montoAhorro = parseOptionalDecimal(body.montoAhorro, 'montoAhorro');
+
+    let dias_vacaciones = 0; 
+    if (body.dias_vacaciones !== undefined && body.dias_vacaciones !== null) {
+      const parsedDias = parseInt(body.dias_vacaciones, 10);
+      if (!isNaN(parsedDias) && parsedDias >= 0) {
+        dias_vacaciones = parsedDias;
+      } else {
+         res.status(400).json({ message: 'Los días de vacaciones deben ser un número válido' });
+         return;
+      }
+    }
+
     const residenteParsed = parseOptionalFlag(body.residente, 'residente');
     const residente = residenteParsed === undefined ? 0 : residenteParsed;
 
@@ -1699,6 +1711,7 @@ export const crearEmpleadoCROV: RequestHandler = async (req, res) => {
         monto_ahorro: montoAhorro ?? 0,
         residente,
         id_sistema_residencia,
+        dias_vacaciones,
       },
     });
 
@@ -1843,6 +1856,16 @@ export const actualizarEmpleadoCROV: RequestHandler = async (req, res) => {
       }
     }
 
+    if (body.dias_vacaciones !== undefined) {
+      const parsedDias = parseInt(body.dias_vacaciones, 10);
+      if (!isNaN(parsedDias) && parsedDias >= 0) {
+        data.dias_vacaciones = parsedDias;
+      } else {
+        res.status(400).json({ message: 'Los días de vacaciones deben ser un número entero positivo' });
+        return;
+      }
+    }
+
     if (Object.keys(data).length === 0) {
       return res.status(400).json({
         message: 'No se proporcionaron cambios para actualizar',
@@ -1886,6 +1909,36 @@ export const eliminarEmpleadoCROV: RequestHandler = async (req, res) => {
   }
 };
 
+export const getCumpleaniosEmpleados: RequestHandler = async (_req, res) => {
+  try {
+    const data = await prisma.$queryRaw<
+      { nombre_completo: string; fecha_nacimiento: Date }[]
+    >(Prisma.sql`
+      SELECT nombre_completo, fecha_nacimiento 
+      FROM empleados_CROV 
+      WHERE activo = 1 
+        AND fecha_nacimiento IS NOT NULL
+    `);
+
+    const response = data.map((empleado) => {
+      const fecha = new Date(empleado.fecha_nacimiento);
+      
+      return {
+        nombreEmpleado: empleado.nombre_completo,
+        mes: fecha.getUTCMonth() + 1, 
+        dia: fecha.getUTCDate()
+      };
+    });
+
+    return res.status(200).json(response);
+
+  } catch (error) {
+    console.error("Error al obtener los cumpleaños de los empleados", error);
+    return res.status(500).json({
+      message: 'Error al obtener los cumpleaños de los empleados'
+    });
+  }
+};
 
 
 /* --------------------------- Tickets soporte CROV --------------------------- */
@@ -3245,6 +3298,161 @@ res.json(empleadosConConteo)
 }
 }
 
+export const obtenerReportePuntosListoPorSprintCROV: RequestHandler = async (req, res) => {
+  try {
+    const sprintId = Number(req.params.idSprint);
+    if (!Number.isInteger(sprintId) || sprintId <= 0) {
+      res.status(400).json({ message: 'El id del sprint es inválido' });
+      return;
+    }
+
+    const sprint = await prisma.sprintCROV.findUnique({
+      where: { id: sprintId },
+      select: {
+        id: true,
+        nombre: true,
+        fecha_inicio: true,
+        fecha_final: true,
+        en_uso: true,
+        activo: true,
+      },
+    });
+
+    if (!sprint) {
+      res.status(404).json({ message: 'Sprint CROV no encontrado' });
+      return;
+    }
+
+    const [empleados, puntosAgrupados] = await Promise.all([
+      prisma.empleados_CROV.findMany({
+        where: { activo: 1 },
+        orderBy: { nombre_completo: 'asc' },
+        select: { id: true, nombre_completo: true, color_perfil: true },
+      }),
+      prisma.tareaCROV.groupBy({
+        by: ['id_empleados_crov'],
+        where: {
+          activo: 1,
+          estatus: EstatusTareaCROV.LISTO,
+          id_sprint: sprintId,
+        },
+        _sum: { complejidad: true },
+      }),
+    ]);
+
+    const puntosPorEmpleado = new Map<number, number>(
+      puntosAgrupados.map((item) => [item.id_empleados_crov, item._sum.complejidad ?? 0]),
+    );
+
+    const usuarios = empleados
+      .map((empleado) => ({
+        id_empleado: empleado.id,
+        nombre_completo: empleado.nombre_completo,
+        color_perfil: empleado.color_perfil,
+        puntos_listo: puntosPorEmpleado.get(empleado.id) ?? 0,
+      }))
+      .sort((a, b) => {
+        if (b.puntos_listo !== a.puntos_listo) return b.puntos_listo - a.puntos_listo;
+        return a.nombre_completo.localeCompare(b.nombre_completo);
+      });
+
+    const totalPuntosSprint = usuarios.reduce((acc, usuario) => acc + usuario.puntos_listo, 0);
+
+    res.json({
+      sprint,
+      total_puntos_sprint: totalPuntosSprint,
+      usuarios,
+    });
+  } catch (error) {
+    console.error('Error al obtener reporte de puntos LISTO por sprint CROV:', error);
+    res.status(500).json({ message: 'Error al obtener reporte de puntos por sprint CROV' });
+  }
+};
+
+export const obtenerComparativaPuntosListoUltimos4SprintsCROV: RequestHandler = async (_req, res) => {
+  try {
+    const [sprintsRecientes, empleados] = await Promise.all([
+      prisma.sprintCROV.findMany({
+        where: { activo: 1 },
+        orderBy: [{ fecha_inicio: 'desc' }, { id: 'desc' }],
+        take: 4,
+        select: {
+          id: true,
+          nombre: true,
+          fecha_inicio: true,
+          fecha_final: true,
+          en_uso: true,
+          activo: true,
+        },
+      }),
+      prisma.empleados_CROV.findMany({
+        where: { activo: 1 },
+        orderBy: { nombre_completo: 'asc' },
+        select: { id: true, nombre_completo: true, color_perfil: true },
+      }),
+    ]);
+
+    const sprintIds = sprintsRecientes.map((sprint) => sprint.id);
+    const puntosAgrupados = sprintIds.length
+      ? await prisma.tareaCROV.groupBy({
+          by: ['id_sprint', 'id_empleados_crov'],
+          where: {
+            activo: 1,
+            estatus: EstatusTareaCROV.LISTO,
+            id_sprint: { in: sprintIds },
+          },
+          _sum: { complejidad: true },
+        })
+      : [];
+
+    const puntosPorSprintYEmpleado = new Map<string, number>();
+    for (const row of puntosAgrupados) {
+      if (row.id_sprint === null) continue;
+      puntosPorSprintYEmpleado.set(
+        `${row.id_sprint}:${row.id_empleados_crov}`,
+        row._sum.complejidad ?? 0,
+      );
+    }
+
+    const empleadosComparativa = empleados.map((empleado) => {
+      const puntosPorSprint = sprintsRecientes.map((sprint) => ({
+        id_sprint: sprint.id,
+        nombre_sprint: sprint.nombre,
+        puntos_listo:
+          puntosPorSprintYEmpleado.get(`${sprint.id}:${empleado.id}`) ?? 0,
+      }));
+
+      return {
+        id_empleado: empleado.id,
+        nombre_completo: empleado.nombre_completo,
+        color_perfil: empleado.color_perfil,
+        total_ultimos_4_sprints: puntosPorSprint.reduce((acc, item) => acc + item.puntos_listo, 0),
+        puntos_por_sprint: puntosPorSprint,
+      };
+    });
+
+    const comparativaPorSprint = sprintsRecientes.map((sprint) => ({
+      sprint,
+      usuarios: empleadosComparativa.map((empleado) => ({
+        id_empleado: empleado.id_empleado,
+        nombre_completo: empleado.nombre_completo,
+        color_perfil: empleado.color_perfil,
+        puntos_listo:
+          puntosPorSprintYEmpleado.get(`${sprint.id}:${empleado.id_empleado}`) ?? 0,
+      })),
+    }));
+
+    res.json({
+      sprints: sprintsRecientes,
+      empleados: empleadosComparativa,
+      comparativa_por_sprint: comparativaPorSprint,
+    });
+  } catch (error) {
+    console.error('Error al obtener comparativa de puntos LISTO en últimos 4 sprints CROV:', error);
+    res.status(500).json({ message: 'Error al obtener comparativa de últimos 4 sprints CROV' });
+  }
+};
+
 export const getHistorialAhorrosEmpleados = async (_req: Request,res: Response) => {
   try {
       const ahorros = await prisma.ahorros_Empleados_CROV.findMany({
@@ -3707,6 +3915,61 @@ export const getTiposIncidencias : RequestHandler = async (req, res) => {
   }
 };
 
+export const getSolicitudesIncidenciaPendientes: RequestHandler = async (req, res) => {
+
+  try {
+    const data = await prisma.solicitudesIncidenciaCROV.findMany({
+      where: {
+        estado: 'PENDIENTE',
+      },
+      orderBy: {
+        created_at: 'asc',
+      },
+      select: {
+        id: true,
+        created_at: true,
+        empleado: {
+          select: {
+            nombre_completo: true,
+          },
+        },
+        tipo_incidencia: {
+          select: {
+            nombre: true,
+          },
+        },
+        descripcion: true,
+        fecha_inicio: true,
+        fecha_fin: true,
+      },
+    });
+
+    const dataNormalizada = data.map((solicitud) => {
+
+      const fechaInicioStr = formatearFechaEsp(solicitud.fecha_inicio);
+      const fechaFinStr = formatearFechaEsp(solicitud.fecha_fin);
+
+      const displayFechas = (fechaInicioStr === fechaFinStr)
+        ? fechaInicioStr
+        : `${fechaInicioStr} - ${fechaFinStr}`;
+
+      return {
+        id: solicitud.id,
+        fecha_solicitud: formatearFechaEsp(solicitud.created_at),
+        empleado: solicitud.empleado.nombre_completo,
+        tipo_incidencia: solicitud.tipo_incidencia.nombre,
+        descripcion: solicitud.descripcion,
+        fechas_solicitadas: displayFechas,
+      }
+    });
+
+    res.status(200).json(dataNormalizada);
+  } catch (error) {
+    console.log("Error al consultar las solicitudes de incidencia: ",error);
+    res.status(500).json({message: "Error al consultar las solicitudes"});
+  }
+};
+
 export const getSolicitudesIncidenciaPorEmpleado: RequestHandler = async (req, res) => {
   const idEmpleado = Number(req.params.idEmpleado);
 
@@ -3856,6 +4119,22 @@ export const crearSolicitudIncidencia: RequestHandler = async (req, res) => {
     if (!empleado) {
       return res.status(404).json({ message: 'Empleado no existente' });
     }
+
+    // Evitar solicitudes duplicadas en estado PENDIENTE 
+    const solicitudPendiente = await prisma.solicitudesIncidenciaCROV.findFirst({
+      where: {
+        id_empleados_crov: empleado.id,
+        id_tipos_incidencia: tipoIncidencia.id,
+        estado: 'PENDIENTE'
+      }
+    });
+
+    if (solicitudPendiente) {
+      return res.status(400).json({ 
+        message: 'Solicitud duplicada',
+        detalle: `Ya tienes una solicitud de "${tipoIncidencia.nombre}" en estado pendiente. Por favor, espera a que sea evaluada o edita la solicitud existente.`
+      });
+    }
     
     const seSolicitanVacaciones = tipoIncidencia.clave === 'VACACIONES';
 
@@ -3865,7 +4144,7 @@ export const crearSolicitudIncidencia: RequestHandler = async (req, res) => {
       if (Number(empleado.dias_vacaciones) < diasSolicitados) {
         return res.status(400).json({ 
           message: 'Saldo de vacaciones insuficiente',
-          detalle: `Se solicitaron ${diasSolicitados} días hábiles de vacaciones, pero solo tienes ${empleado.dias_vacaciones} días disponibles.`
+          detalle: `Se solicitaron ${diasSolicitados} días hábiles de vacaciones, pero solo tienes ${empleado.dias_vacaciones} día(s) disponibles.`
         });
       }
       // aqui NO se restan los días. Eso se hace cuando el jefe APRUEBA la solicitud.
@@ -4049,5 +4328,132 @@ export const actualizarSolicitudIncidencia: RequestHandler = async (req, res) =>
   } catch (error) {
     console.error("Error al actualizar la solicitud: ", error);
     return res.status(500).json({ message: 'Error interno al actualizar la solicitud' });
+  }
+};
+
+export const aprobarRechazarSolicitudIncidencia: RequestHandler = async (req, res) => {
+  const idSolicitud = Number(req.params.idSolicitud);
+  const body = (req && typeof req.body === 'object' ? req.body : {}) as Record<string, any>;
+  const { accion, motivo } = body;
+
+  try {
+    if (isNaN(idSolicitud) || !Number.isInteger(idSolicitud) || idSolicitud <= 0) {
+      return res.status(400).json({ message: "ID de solicitud inválido" });
+    }
+
+    const accionesPermitidas = ["APROBADO", "RECHAZADO"];
+
+    if (!accion || !accionesPermitidas.includes(accion)) {
+      return res.status(400).json({ message: "Acción inválida" });
+    }
+
+    const solicitud = await prisma.solicitudesIncidenciaCROV.findUnique({
+      where: { id: idSolicitud },
+      select: {
+        id: true,
+        fecha_inicio: true,
+        fecha_fin: true,
+        id_empleados_crov: true, 
+        tipo_incidencia: {
+          select: {
+            clave: true,
+            nombre: true,
+          }
+        },
+        estado: true,
+        descripcion: true,
+      },
+    });
+
+    if (!solicitud) {
+      return res.status(404).json({ message: "Solicitud no encontrada" });
+    }
+
+    if (solicitud.estado === 'APROBADO' || solicitud.estado === 'RECHAZADO') {
+       return res.status(400).json({ message: "Esta solicitud ya fue procesada anteriormente" });
+    }
+
+    if (solicitud.estado === 'CANCELADO') {
+       return res.status(400).json({ message: "Esta solicitud ha sido cancelada por el empleado." });
+    }
+
+    const empleado = await prisma.empleados_CROV.findUnique({
+          where: { id: solicitud.id_empleados_crov },
+          select: { correo: true, dias_vacaciones: true, nombre_completo: true }
+        });
+
+    if (!empleado) {
+      return res.status(404).json({ message: "El empleado de la solicitud no fue encontrado." });
+    }
+
+    await prisma.$transaction(async (tx) => { 
+      // ACTUALIZAR ESTADO Y EL MOTIVO 
+      await tx.solicitudesIncidenciaCROV.update({
+        where: { id: idSolicitud },
+        data: {
+          estado: accion,
+          motivo_rechazo: accion === 'RECHAZADO' ? motivo : null, 
+        },
+      });
+
+      const esVacaciones = solicitud.tipo_incidencia.clave === 'VACACIONES';
+      
+      if (esVacaciones && accion === 'APROBADO') {
+        
+        const diasSolicitados = calcularDiasHabiles(solicitud.fecha_inicio, solicitud.fecha_fin);
+
+        if (diasSolicitados <= 0) {
+           throw new Error("El rango de fechas no contiene días hábiles válidos.");
+        }
+
+        // SE BUSCA DE NUEVO AL EMPLEADO ADENTRO DE LA TRANSACCIÓN PARA TENER EL SALDO MÁS RECIENTE
+        const empleadoActualizado = await tx.empleados_CROV.findUnique({
+          where: { id: solicitud.id_empleados_crov },
+          select: { dias_vacaciones: true }
+        });
+
+        if (!empleadoActualizado) {
+          throw new Error("El empleado de la solicitud no fue encontrado.");
+        }
+
+        if (empleadoActualizado.dias_vacaciones < diasSolicitados) {
+          throw new Error(`El empleado no tiene suficientes días de vacaciones. Saldo: ${empleado.dias_vacaciones}, Solicitados: ${diasSolicitados}`);
+        }
+
+        // Restar los días
+        await tx.empleados_CROV.update({
+          where: { id: solicitud.id_empleados_crov },
+          data: {
+            dias_vacaciones: {
+              decrement: diasSolicitados // Prisma resta atómicamente
+            }
+          }
+        });
+      }
+    }); 
+
+    res.status(200).json({ message: `Solicitud ${accion} exitosamente` });
+
+    if (empleado.correo) { 
+      // mandar correo al empleado de confirmacion
+      notificarEvaluacionSolicitudIncidenciaRH(
+        empleado.correo,
+        empleado.nombre_completo,
+        solicitud.tipo_incidencia.nombre,
+        accion,
+        solicitud.fecha_inicio,
+        solicitud.fecha_fin,
+        solicitud.descripcion ?? "Sin descripción",
+        accion === 'RECHAZADO' ? motivo : null
+      );
+    }
+
+  } catch (error) {
+    console.error("Error al actualizar la solicitud: ", error);
+    // Si el error viene de la validación de saldo, enviamos 400, si no 500
+    const msg = error instanceof Error ? error.message : 'Error interno';
+    const status = msg.includes("suficientes días") || msg.includes("días hábiles") ? 400 : 500;
+    
+    return res.status(status).json({ message: msg });
   }
 };

@@ -405,18 +405,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Accesos directos centrados en fila horizontal */}
       <div className="w-full overflow-x-auto py-4">
         <div className="flex justify-center gap-4 px-6 w-max mx-auto">
-          {links.map(({ href, label, icon, guide }) => (
-            <Link
-              key={href}
-              href={href}
-              title={label}
-              data-guide={guide}
-              className="min-w-[140px] bg-white border rounded-xl shadow-sm hover:shadow-md px-4 py-3 flex flex-col items-center text-center transition"
-            >
-              <div className="text-orange-500 mb-1">{icon}</div>
-              <span className="text-xs font-medium text-gray-700">{label}</span>
-            </Link>
-          ))}
+          {links.map(({ href, label, icon, guide }) => {
+            // Lógica de detección de ruta activa
+            const isActive = href === '/dashboard' 
+              ? pathname === href 
+              : pathname.startsWith(href);
+
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={label}
+                data-guide={guide}
+                className={`min-w-[140px] border rounded-xl shadow-sm hover:shadow-md px-4 py-3 flex flex-col items-center text-center transition ${
+                  isActive 
+                    ? 'bg-orange-50 border-orange-500 ring-1 ring-orange-500' // Estilo cuando está activo
+                    : 'bg-white border-gray-200' // Estilo normal
+                }`}
+              >
+                <div className={`${isActive ? 'text-orange-600' : 'text-orange-500'} mb-1`}>
+                  {icon}
+                </div>
+                <span className={`text-xs font-medium ${isActive ? 'text-orange-700 font-bold' : 'text-gray-700'}`}>
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

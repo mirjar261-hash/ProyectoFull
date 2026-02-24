@@ -26,14 +26,16 @@ export const permisosBaseCrovInternal = [
   { id: 25, nombre: 'Catalogos Crov/Historial-Ahorros' },
   { id: 26, nombre: 'Catalogos Crov/Mi Ahorro' },
   { id: 27, nombre: 'Jira/Sistemas' },
+  { id: 28, nombre: 'RH/Mis solicitudes incidencia' },
+  { id: 29, nombre: 'RH/Gestionar solicitudes incidencia' },
 ];
 
 const permisosPorRol = {
-  SCRUM_MASTER: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
-  DESARROLLADOR: [1, 2, 6, 7, 8, 9, 11,13, 20, 21, 22, 23, 24, 26, 27],
-  TESTER: [1, 2, 6, 7, 11, 20, 21, 22, 23, 24, 26, 27],
-  VENTAS: [1, 3, 4, 5, 6, 8, 10, 26],
-  SLA: [1, 2, 3, 6, 7, 8, 9, 11, 26],
+  SCRUM_MASTER: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+  DESARROLLADOR: [1, 2, 6, 7, 8, 9, 11,13, 20, 21, 22, 23, 24, 26, 27, 28],
+  TESTER: [1, 2, 6, 7, 11, 20, 21, 22, 23, 24, 26, 27, 28],
+  VENTAS: [1, 3, 4, 5, 6, 8, 10, 26, 28],
+  SLA: [1, 2, 3, 6, 7, 8, 9, 11, 26, 28],
 };
 
 export const permisosCrovInternalPorPuesto: Record<string, { id: number; nombre: string }[]> =

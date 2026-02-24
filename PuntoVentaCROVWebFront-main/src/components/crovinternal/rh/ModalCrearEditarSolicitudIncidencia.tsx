@@ -151,9 +151,12 @@ export default function ModalCrearEditarSolicitudIncidencia({
         return; 
       } 
 
-      if (status === 400) {
-         toast.error(message);
-         return; 
+      if (status === 400) { // errores de validacion
+         const detalle = data?.detalle;
+         if (detalle) {
+           return toast.error(message, {description: detalle});
+         }
+         return toast.error(message);
       }
 
       if (status === 409 || status === 404) {

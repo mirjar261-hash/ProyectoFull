@@ -16,18 +16,17 @@ import {
   obtenerKpisDia,
   obtenerKpisSemana,
   obtenerKpisMes,
+  obtenerComparativaDiaria,
+  getGerenteDashboard,
+  getProductosBajaRotacion,
+  getImpactoDevoluciones
 } from '../controllers/gerente.controller';
 import { verifyToken } from '../middlewares/verifyToken';
 
 const router = express.Router();
 
 router.get('/ventasDevueltas7dias', verifyToken, obtenerVentasDevueltas7Dias);
-router.get(
-  '/detallesVentasDevueltas7dias',
-  verifyToken,
-  obtenerDetallesVentasDevueltas7Dias
-);
-router.get('/ventasConDescuento7dias', verifyToken, obtenerVentasConDescuento7Dias);
+router.get('/detallesVentasDevueltas7dias', verifyToken, obtenerVentasConDescuento7Dias);
 router.get('/productosInventarioMinimo', verifyToken, obtenerProductosInventarioMinimo);
 router.get('/prediccionInventario', verifyToken, prediccionInventario);
 router.get('/prediccionVentas', verifyToken, prediccionVentas);
@@ -40,6 +39,11 @@ router.get('/topClientesUltimoMes', verifyToken, topClientesUltimoMes);
 router.get('/kpisDia', verifyToken, obtenerKpisDia);
 router.get('/kpisSemana', verifyToken, obtenerKpisSemana);
 router.get('/kpisMes', verifyToken, obtenerKpisMes);
+router.get('/comparativa-diaria', verifyToken, obtenerComparativaDiaria);
 router.post('/consultaSql', verifyToken, consultaSql);
+router.get('/metas', verifyToken, getGerenteDashboard);
+router.get('/productosBajaRotacion', verifyToken, getProductosBajaRotacion);
+router.get('/impacto-devoluciones', verifyToken, getImpactoDevoluciones);
+
 
 export default router;
